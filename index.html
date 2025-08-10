@@ -25,14 +25,12 @@
   .nav button.active{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,109,246,.18) inset}
   main{flex:1;max-width:1100px;margin:0 auto;padding:20px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 8px 28px rgba(4,12,22,.35);margin-bottom:16px}
-  h2{font-size:18px;margin:6px 0 10px}
-  h3{font-size:16px;margin:0 0 8px}
+  h2{font-size:18px;margin:6px 0 10px} h3{font-size:16px;margin:0 0 8px}
   p.muted{color:var(--muted);font-size:13px;margin:6px 0 12px}
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
   input,select,textarea{width:100%;padding:10px 12px;background:#0b1a2a;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px}
   textarea{min-height:88px}
-  .row{display:flex;gap:16px;align-items:stretch}
-  .col{flex:1}
+  .row{display:flex;gap:16px;align-items:stretch} .col{flex:1}
   .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
   .right{display:flex;gap:8px}
   button{appearance:none;border:1px solid var(--line);background:#0f1c2e;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer}
@@ -55,6 +53,11 @@
   .kpi{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi .big{font-weight:800;font-size:22px}
   .small{font-size:12px}
+  .muteb{color:#9cb3cc}
+  @media print{
+    body{background:#fff;color:#000}
+    .no-print{display:none}
+  }
 </style>
 </head>
 <body>
@@ -63,7 +66,7 @@
     <div class="logo">LOGO</div>
     <div>
       <h1>Klaedes Advisory • FuelEU Pooling Platform</h1>
-      <div class="sub">Dark maritime demo • Self-serve + vessel onboarding + pool calculator</div>
+      <div class="sub">Dark maritime demo • Settlement Statements (information-only) + Billing</div>
     </div>
   </div>
   <div style="margin-left:auto" class="stepper" id="stepper"></div>
@@ -84,6 +87,7 @@
       <div class="navtitle" style="margin-top:14px">Manage</div>
       <div><button onclick="nav('vessels')">Vessels (add/import)</button></div>
       <div><button onclick="nav('account')">Account & Org</button></div>
+      <div><button onclick="nav('billing')">Billing (platform fees)</button></div>
 
       <div class="navtitle" style="margin-top:14px">Calculators</div>
       <div><button onclick="nav('calc')">Pool Calculator</button></div>
@@ -105,9 +109,9 @@
 const state = {
   step: 0,
   org: { name: 'Klaedes Shipping (demo)', email:'demo@klaedes.io' },
-  targets: { 2025: 89.3, 2026: 86.8, 2027: 84.0 }, // gCO2e/MJ (editable)
-  fx: { eurusd: 1.10 },
-  vessels: JSON.parse(localStorage.getItem('vessels')||'[]'), // {imo,name,type,year,energyMJ,achieved,currency,mode,balance}
+  targets: { 2025: 89.3, 2026: 86.8, 2027: 84.0 },
+  fx: { eurusd: 1.10, mode:'auto' },
+  vessels: JSON.parse(localStorage.getItem('vessels')||'[]'),
   pool:{ name:'2026 Global Pool', year:2026, coordinator:'Klaedes Shipping', coCoordinator:true},
   invites:[
     { org:'MedBlue Lines', role:'Member', status:'Accepted' },
@@ -115,10 +119,11 @@ const state = {
     { org:'EuroBulk Carriers', role:'Member', status:'Accepted' },
     { org:'Pacific Star Ferries', role:'Member', status:'Accepted' }
   ],
-  pricing:{ basePerVesselEUR:250, percentOfSettlement:0.003 },
+  pricing:{ basePerVesselEUR:250, percentOfSettlement:0.003, visibleToCoordinatorOnly:true },
   penaltyRatePerUnitEUR:0.0024,
   settlements:null,
-  calcSel:null
+  calcSel:null,
+  invoices:[]
 };
 
 /* ------------------------ HELPERS ------------------------ */
@@ -132,6 +137,7 @@ function nav(which){
   const el = document.getElementById('screen');
   if(which==='vessels'){ el.innerHTML = viewVessels(); }
   else if(which==='account'){ el.innerHTML = viewAccount(); }
+  else if(which==='billing'){ el.innerHTML = viewBilling(); }
   else if(which==='calc'){ el.innerHTML = viewCalc(); }
   else if(which==='dash'){ el.innerHTML = `<div class="card"><h2>Dashboards</h2><p class="muted">Role-based KPIs.</p></div>`; }
   else if(which==='forecast'){ el.innerHTML = `<div class="card"><h2>Forecasting</h2><p class="muted">What-ifs coming soon.</p></div>`; }
@@ -141,7 +147,6 @@ function nav(which){
   else if(which==='admin'){ el.innerHTML = viewAdmin(); }
   renderStepper();
 }
-function toEUR(amount, currency){ if(currency==='EUR') return amount; if(currency==='USD') return amount/state.fx.eurusd; return amount; }
 function recompute(v){
   const target = state.targets[v.year] ?? 0;
   const delta = Number(v.achieved) - Number(target);
@@ -149,11 +154,8 @@ function recompute(v){
 }
 
 /* -------------------- 7-STEP FLOW VIEWS -------------------- */
-function viewCreate(){
-  const p=state.pool;
-  return `<div class="card">
-    <h2>1. Create Pool</h2>
-    <p class="muted">Name, year, coordinator roles.</p>
+function viewCreate(){ const p=state.pool; return `
+  <div class="card"><h2>1. Create Pool</h2><p class="muted">Name, year, coordinator roles.</p>
     <div class="row">
       <div class="col">
         <label>Pool name</label><input value="${p.name}" oninput="state.pool.name=this.value">
@@ -161,22 +163,17 @@ function viewCreate(){
         <label>Coordinator</label><input value="${p.coordinator}" oninput="state.pool.coordinator=this.value">
         <label><input type="checkbox" ${p.coCoordinator?'checked':''} onclick="state.pool.coCoordinator=this.checked"> Enable co-coordinator</label>
       </div>
-      <div class="col">
-        <div class="kpi"><div class="muted">Mode</div><div class="big">Pooling & Solo</div></div>
-        <div class="kpi"><div class="muted">Banking/Borrowing</div><div class="big">Enabled</div></div>
-      </div>
+      <div class="col"><div class="kpi"><div class="muted">Mode</div><div class="big">Pooling & Solo</div></div><div class="kpi"><div class="muted">Banking/Borrowing</div><div class="big">Enabled</div></div></div>
     </div>
     <div class="toolbar"><span class="note">Autosaved.</span><div class="right"><button class="primary" onclick="go(1)">Continue →</button></div></div>
-  </div>`;
-}
-function viewInvite(){
-  const rows = state.invites.map(r=>`
-    <div class="row" style="align-items:center;border-bottom:1px solid var(--line);padding:10px 0">
-      <div class="col"><strong>${r.org}</strong><div class="small">${r.role}</div></div>
-      <div style="display:flex;gap:8px;align-items:center"><span class="tag ${r.status==='Accepted'?'ok':(r.status==='Pending'?'warn':'')}">${r.status}</span><button class="ghost">Resend</button></div>
-    </div>`).join('');
-  return `<div class="card">
-    <h2>2. Invite Members</h2>
+  </div>`; }
+
+function viewInvite(){ const rows = state.invites.map(r=>`
+  <div class="row" style="align-items:center;border-bottom:1px solid var(--line);padding:10px 0">
+    <div class="col"><strong>${r.org}</strong><div class="small">${r.role}</div></div>
+    <div style="display:flex;gap:8px;align-items:center"><span class="tag ${r.status==='Accepted'?'ok':(r.status==='Pending'?'warn':'')}">${r.status}</span><button class="ghost">Resend</button></div>
+  </div>`).join('');
+  return `<div class="card"><h2>2. Invite Members</h2>
     <div class="row">
       <div class="col card">
         <label>Org email / ID</label><input placeholder="compliance@company.com">
@@ -186,50 +183,45 @@ function viewInvite(){
       <div class="col card">${rows}</div>
     </div>
     <div class="toolbar"><button class="ghost" onclick="go(0)">← Back</button><div class="right"><button class="primary" onclick="go(2)">Continue →</button></div></div>
-  </div>`;
-}
-function viewAgreement(){
-  return `<div class="card">
-    <h2>3. Pool Agreement</h2>
+  </div>`; }
+
+function viewAgreement(){ return `
+  <div class="card"><h2>3. Pool Agreement</h2>
     <p class="muted">BIMCO-inspired placeholders. Clause-level editing. E-sign stub.</p>
     <div class="row"><div class="col"><label>Clause: Pricing Terms</label><textarea>[Placeholder] Price floor/ceiling; Payment terms; Late penalties.</textarea></div><div class="col"><label>E-sign</label><select><option>DocuSign</option><option>Adobe Sign</option></select><button style="margin-top:8px">Send for E-sign</button></div></div>
     <div class="toolbar"><button class="ghost" onclick="go(1)">← Back</button><div class="right"><button class="primary" onclick="go(3)">Continue →</button></div></div>
-  </div>`;
-}
-function viewAttach(){
-  const rows = state.vessels
-    .filter(v=>v.year==state.pool.year)
-    .map(v=>`<tr><td><input type="checkbox" ${v.mode==='Pool'?'checked':''} onclick="v.mode=this.checked?'Pool':'Standalone';save();render();"></td><td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type}</td><td class="kbd">${v.achieved}</td><td class="kbd">${(state.targets[v.year]??0)}</td><td class="kbd">${(v.balance??0).toLocaleString()}</td><td><span class="tag ${v.balance>0?'ok':'bad'}">${v.balance>0?'Surplus':'Deficit'}</span></td></tr>`).join('') || `<tr><td colspan="8">No vessels for ${state.pool.year}. Go to “Vessels” to add/import.</td></tr>`;
-  return `<div class="card">
-    <h2>4. Attach Vessels</h2>
+  </div>`; }
+
+function viewAttach(){ const rows = state.vessels.filter(v=>v.year==state.pool.year).map(v=>`
+  <tr><td><input type="checkbox" ${v.mode==='Pool'?'checked':''} onclick="v.mode=this.checked?'Pool':'Standalone';save();render();"></td>
+      <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type}</td><td class="kbd">${v.achieved}</td><td class="kbd">${(state.targets[v.year]??0)}</td><td class="kbd">${(v.balance??0).toLocaleString()}</td><td><span class="tag ${v.balance>0?'ok':'bad'}">${v.balance>0?'Surplus':'Deficit'}</span></td></tr>`
+).join('') || `<tr><td colspan="8">No vessels for ${state.pool.year}. Go to “Vessels” to add/import.</td></tr>`;
+  return `<div class="card"><h2>4. Attach Vessels</h2>
     <p class="muted">Tick to include vessel in this pool. A vessel can’t be in two pools for the same year.</p>
     <div class="matrix"><table><thead><tr><th>In Pool</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Achieved</th><th>Target</th><th>Balance units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="toolbar"><button class="ghost" onclick="go(2)">← Back</button><div class="right"><button class="primary" onclick="go(4)">Continue →</button></div></div>
-  </div>`;
-}
+  </div>`; }
+
 function computeSettlements(){
   const selected = state.vessels.filter(v=>v.year==state.pool.year && v.mode==='Pool');
   const net = selected.reduce((a,b)=>a + (b.balance||0), 0);
   const creditors = selected.filter(v=>v.balance>0);
   const debtors = selected.filter(v=>v.balance<0).map(v=>({ ...v, amt:Math.abs(v.balance)}));
-  const transfers=[];
-  let i=0,j=0; const c=creditors.map(v=>({name:v.name, amt:v.balance}));
+  const transfers=[]; let i=0,j=0; const c=creditors.map(v=>({org:v.owner||v.name, name:v.name, amt:v.balance}));
   while(i<c.length && j<debtors.length){
     const pay=Math.min(c[i].amt, debtors[j].amt);
-    transfers.push({from:debtors[j].name, to:c[i].name, eur:pay, type:'Cash'});
+    transfers.push({from:debtors[j].name, to:c[i].name, eur:pay, type:'Cash', inKind:''});
     c[i].amt-=pay; debtors[j].amt-=pay;
     if(c[i].amt<=1) i++; if(debtors[j].amt<=1) j++;
   }
   const volume = transfers.reduce((a,t)=>a+t.eur,0);
   const base = state.pricing.basePerVesselEUR * selected.length;
   const pct = volume * state.pricing.percentOfSettlement;
-  state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct} };
+  state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct}, parties: Array.from(new Set(selected.map(v=>v.owner||v.name))) };
 }
-function viewPreview(){
-  computeSettlements();
-  const s=state.settlements; const pen = Math.abs(s.net)*state.penaltyRatePerUnitEUR;
-  return `<div class="card">
-    <h2>5. Preview & Pricing</h2>
+
+function viewPreview(){ computeSettlements(); const s=state.settlements; const pen = Math.abs(s.net)*state.penaltyRatePerUnitEUR; return `
+  <div class="card"><h2>5. Preview & Pricing</h2>
     <div class="row">
       <div class="col kpi"><div class="muted">Net units</div><div class="big">${s.net.toLocaleString()}</div></div>
       <div class="col kpi"><div class="muted">€ at penalty rate</div><div class="big">€ ${pen.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
@@ -237,13 +229,14 @@ function viewPreview(){
       <div class="col kpi"><div class="muted">Platform fee (hybrid)</div><div class="big">€ ${s.fees.total.toLocaleString()}</div></div>
     </div>
     <div class="toolbar"><button class="ghost" onclick="go(3)">← Back</button><div class="right"><button class="primary" onclick="go(5)">Continue →</button></div></div>
-  </div>`;
-}
+  </div>`; }
+
 function viewSettlement(){
-  const rows = state.settlements.transfers.map(t=>`
+  const selParties = Array.from(new Set(state.vessels.filter(v=>v.year==state.pool.year && v.mode==='Pool').map(v=>v.owner||v.name)));
+  const rows = (state.settlements?.transfers||[]).map(t=>`
     <tr><td>${t.from}</td><td>${t.to}</td><td class="kbd">€ ${t.eur.toLocaleString()}</td>
       <td><select onchange="t.type=this.value;render()"><option>Cash</option><option ${t.type==='In-kind'?'selected':''}>In-kind</option><option ${t.type==='Mixed'?'selected':''}>Mixed</option></select></td>
-      <td><input value="${t.type==='Cash'?'—':'Cargo slots / 5 days'}"></td>
+      <td><input value="${t.inKind|| (t.type==='Cash'?'—':'Cargo slots / 5 days')}" oninput="t.inKind=this.value"></td>
     </tr>`).join('') || `<tr><td colspan="5">No transfers (no pooled vessels).</td></tr>`;
   return `<div class="card">
     <h2>6. Settlement Matrix</h2>
@@ -251,10 +244,11 @@ function viewSettlement(){
       <div class="col card">
         <h3>FX</h3>
         <label>EUR→USD</label><input value="${state.fx.eurusd}" oninput="state.fx.eurusd=parseFloat(this.value)||1.1">
-        <label><input type="checkbox" checked> Auto-update on rate change</label>
+        <label>Mode</label><select onchange="state.fx.mode=this.value"><option ${state.fx.mode==='auto'?'selected':''}>auto</option><option ${state.fx.mode==='manual'?'selected':''}>manual</option></select>
+        <p class="small muted">FX source appears on statements.</p>
       </div>
       <div class="col card">
-        <h3>Platform Fee</h3>
+        <h3>Platform Fee (coordinator-only)</h3>
         <div class="row">
           <div class="col kpi"><div class="muted">Base</div><div class="big">€ ${state.settlements.fees.base.toLocaleString()}</div></div>
           <div class="col kpi"><div class="muted">% fee</div><div class="big">€ ${state.settlements.fees.pct.toLocaleString()}</div></div>
@@ -263,20 +257,43 @@ function viewSettlement(){
       </div>
     </div>
     <div class="matrix"><table><thead><tr><th>From</th><th>To</th><th>Amount (EUR)</th><th>Type</th><th>In-kind details</th></tr></thead><tbody>${rows}</tbody></table></div>
+
+    <div class="divider"></div>
+    <div class="row">
+      <div class="col card">
+        <h3>Settlement Statements (information-only)</h3>
+        <div class="row">
+          <div class="col">
+            <button class="primary" onclick="generateStatementPDF()">Generate Pool Settlement Statement (PDF)</button>
+          </div>
+          <div class="col">
+            <label>Per-party</label>
+            <select id="partySel">${selParties.map(p=>`<option>${p}</option>`).join('')}</select>
+            <button onclick="generateStatementPDF(document.getElementById('partySel').value)">Generate Statement for Party</button>
+          </div>
+        </div>
+        <p class="small muted">Statements translate surpluses/deficits into monetary terms (per FX), include in-kind notes, and show a “not an invoice” disclaimer.</p>
+      </div>
+      <div class="col card">
+        <h3>Exports</h3>
+        <button class="ghost" onclick="exportCSV()">CSV (transfers)</button>
+        <button class="ghost" onclick="exportJSON()">JSON (transfers)</button>
+      </div>
+    </div>
+
     <div class="toolbar"><button class="ghost" onclick="go(4)">← Back</button><div class="right"><button class="primary" onclick="go(6)">Continue →</button></div></div>
   </div>`;
 }
-function viewLock(){
-  return `<div class="card">
-    <h2>7. Lock & Share</h2>
+
+function viewLock(){ return `
+  <div class="card"><h2>7. Lock & Share</h2>
     <p class="muted">Freeze, export verifier pack and offline export (stub).</p>
     <div class="row">
       <div class="col card"><h3>Freeze & Snapshot</h3><button>Freeze Pool</button></div>
       <div class="col card"><h3>Exports</h3><button class="ghost">Verifier Pack</button> <button class="ghost">Offline Export</button></div>
     </div>
     <div class="toolbar"><button class="ghost" onclick="go(5)">← Back</button><div class="right"><button class="primary" onclick="alert('Done!')">Finish</button></div></div>
-  </div>`;
-}
+  </div>`; }
 
 /* -------------------- VESSELS MANAGER -------------------- */
 function addVessel(){
@@ -291,11 +308,9 @@ function addVessel(){
     mode:document.getElementById('v_mode').value
   };
   if(!v.imo || !v.name){ alert('IMO and Name are required.'); return; }
-  recompute(v);
-  state.vessels.push(v); save(); render();
+  recompute(v); state.vessels.push(v); save(); render();
 }
 function importCSV(file){
-  // CSV columns: IMO,Name,Type,Year,EnergyMJ,AchievedIntensity_gCO2e_per_MJ,Currency
   const reader = new FileReader();
   reader.onload = e=>{
     const rows = (e.target.result||'').toString().split(/\r?\n/).filter(Boolean);
@@ -327,9 +342,8 @@ function viewVessels(){
       <td><button class="ghost" onclick="state.vessels.splice(${i},1); save(); render()">Remove</button></td>
     </tr>`).join('') || `<tr><td colspan="10">No vessels yet. Add one below or import CSV.</td></tr>`;
   const yrOpts = [2025,2026,2027].map(y=>`<option>${y}</option>`).join('');
-  return `<div class="card">
-    <h2>Vessels (add/import & compute)</h2>
-    <p class="muted">Add vessels and paste verifier report values. We compute balances with your <em>Targets</em> per year.</p>
+  return `<div class="card"><h2>Vessels (add/import & compute)</h2>
+    <p class="muted">Paste verifier values; we compute balances from Achieved–Target × Energy (MJ).</p>
     <div class="row">
       <div class="col card">
         <h3>Add vessel</h3>
@@ -341,7 +355,7 @@ function viewVessels(){
         <label>Achieved (gCO₂e/MJ)</label><input id="v_achieved" type="number" step="0.01" placeholder="88.2">
         <label>Currency</label><select id="v_curr"><option>EUR</option><option>USD</option></select>
         <label>Mode</label><select id="v_mode"><option>Pool</option><option selected>Standalone</option></select>
-        <div class="toolbar"><span class="note">We’ll auto-calc balance units.</span><div class="right"><button onclick="addVessel()">Add</button></div></div>
+        <div class="toolbar"><span class="note">Auto-calc balance units.</span><div class="right"><button onclick="addVessel()">Add</button></div></div>
       </div>
       <div class="col card">
         <h3>Import from CSV (verifier export)</h3>
@@ -358,10 +372,9 @@ function viewVessels(){
   </div>`;
 }
 
-/* -------------------- ACCOUNT / ADMIN -------------------- */
-function viewAccount(){
-  return `<div class="card">
-    <h2>Account & Organization</h2>
+/* -------------------- ACCOUNT / ADMIN / BILLING -------------------- */
+function viewAccount(){ return `
+  <div class="card"><h2>Account & Organization</h2>
     <div class="row">
       <div class="col card">
         <h3>Create account (demo)</h3>
@@ -375,26 +388,36 @@ function viewAccount(){
         <label>Invite user</label><input placeholder="user@company.com"><button style="margin-top:8px">Send invite</button>
       </div>
     </div>
-  </div>`;
-}
-function viewAdmin(){
-  return `<div class="card"><h2>Platform Admin</h2>
+  </div>`; }
+
+function viewAdmin(){ return `
+  <div class="card"><h2>Platform Admin</h2>
     <label>Base fee per vessel (EUR)</label><input value="${state.pricing.basePerVesselEUR}" oninput="state.pricing.basePerVesselEUR=+this.value;render()">
     <label>% of settlement</label><input value="${(state.pricing.percentOfSettlement*100).toFixed(2)}%" oninput="state.pricing.percentOfSettlement=parseFloat(this.value)/100;render()">
+    <label><input type="checkbox" ${state.pricing.visibleToCoordinatorOnly?'checked':''} onclick="state.pricing.visibleToCoordinatorOnly=this.checked"> Coordinator-only fee visibility</label>
+  </div>`; }
+
+function viewBilling(){
+  const s = state.settlements || { fees:{base:0,pct:0,total:0} };
+  const rows = `
+    <tr><td>2026-08-01</td><td>Platform fee (base)</td><td class="kbd">€ ${s.fees.base.toLocaleString()}</td><td><button class="ghost" onclick="alert('Stripe Checkout (stub)')">Pay</button></td></tr>
+    <tr><td>2026-08-01</td><td>Platform fee (% of settlement)</td><td class="kbd">€ ${s.fees.pct.toLocaleString()}</td><td><button class="ghost" onclick="alert('Stripe Checkout (stub)')">Pay</button></td></tr>
+  `;
+  return `<div class="card"><h2>Billing (platform fees)</h2>
+    <p class="muted">Coordinators pay platform fees here. Member-to-member settlement is off-platform; use the information statements from Step 6.</p>
+    <div class="matrix"><table><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="toolbar"><span class="note">Stripe integration in MVP: invoices + SEPA/card, VAT via Stripe Tax.</span><div class="right"><button class="primary" onclick="alert('Open Stripe Customer Portal (stub)')">Open Customer Portal</button></div></div>
   </div>`;
 }
 
 /* --------------- POOL EFFICIENCY CALCULATOR --------------- */
-// Weighted by energy across last 12 months
 function computeWeighted(vLogs){
   const E = vLogs.reduce((a,b)=>a + (b.energyMJ||0), 0);
   if(!E) return { achieved: 0, energyMJ: 0 };
   const achieved = vLogs.reduce((a,b)=>a + (b.achieved*(b.energyMJ||0)), 0) / E;
   return { achieved, energyMJ: E };
 }
-// Import last 12-month logs CSV and recompute vessel balances
 function importPoolLogs(file){
-  // CSV columns: IMO,Month,EnergyMJ,Achieved_gCO2e_per_MJ
   const reader = new FileReader();
   reader.onload = e=>{
     const rows = (e.target.result||'').toString().split(/\r?\n/).filter(Boolean);
@@ -425,18 +448,15 @@ function importPoolLogs(file){
   };
   reader.readAsText(file);
 }
-// Compute coverage & stress test
 function poolEfficiency(selected){
   const surplus = selected.reduce((a,v)=> a + Math.max(0, v.balance||0), 0);
   const deficit = selected.reduce((a,v)=> a + Math.max(0, -(v.balance||0)), 0);
   const coverage = deficit ? surplus/deficit : Infinity;
   const stressCoverage = deficit ? (surplus*0.90) / (deficit*1.05) : Infinity;
-
   let verdict = "Fail", level="bad";
   if(coverage >= 1.20){ verdict = "Strong Pass"; level="ok"; }
   else if(coverage >= 1.00){ verdict = "Pass"; level="ok"; }
   else if(coverage >= 0.80){ verdict = "Marginal"; level="warn"; }
-
   return { surplus, deficit, coverage, stressCoverage, verdict, level };
 }
 function calculatorSuggestions(selected, all){
@@ -458,11 +478,8 @@ function viewCalc(){
   const rows = all.map(v=>`
     <tr>
       <td><input type="checkbox" ${state.calcSel.has(v.imo)?'checked':''} onclick="this.checked?state.calcSel.add('${v.imo}'):state.calcSel.delete('${v.imo}'); render()"></td>
-      <td>${v.name}</td>
-      <td class="small">${v.imo}</td>
-      <td>${v.type||''}</td>
-      <td class="kbd">${v.achieved??''}</td>
-      <td class="kbd">${state.targets?.[v.year]??''}</td>
+      <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type||''}</td>
+      <td class="kbd">${v.achieved??''}</td><td class="kbd">${state.targets?.[v.year]??''}</td>
       <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
       <td class="kbd">${(v.balance??0).toLocaleString()}</td>
       <td><span class="tag ${v.balance>0?'ok':(v.balance<0?'bad':'warn')}">${v.balance>0?'Surplus':(v.balance<0?'Deficit':'Flat')}</span></td>
@@ -476,8 +493,7 @@ function viewCalc(){
   const focus = sugg.focus ? `${sugg.focus.name} (${sugg.focus.balance.toLocaleString()}u deficit)` : 'None';
 
   return `
-  <div class="card">
-    <h2>Pool Efficiency Calculator</h2>
+  <div class="card"><h2>Pool Efficiency Calculator</h2>
     <p class="muted">Import 12-month logs, select vessels, and see if your pool will cover deficits. We recompute balances using weighted intensity across the year.</p>
 
     <div class="row">
@@ -485,9 +501,7 @@ function viewCalc(){
         <h3>Import last 12 months</h3>
         <p class="small muted">CSV: <code>IMO,Month,EnergyMJ,Achieved_gCO2e_per_MJ</code></p>
         <input type="file" accept=".csv" onchange="importPoolLogs(this.files[0])">
-        <p class="small muted" style="margin-top:8px">We recompute each vessel’s weighted intensity and balance units.</p>
       </div>
-
       <div class="col card">
         <h3>Result</h3>
         <div class="row">
@@ -500,8 +514,7 @@ function viewCalc(){
       </div>
     </div>
 
-    <div class="card">
-      <h3>Build your candidate pool</h3>
+    <div class="card"><h3>Build your candidate pool</h3>
       <div class="matrix"><table>
         <thead><tr><th>Use</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Achieved</th><th>Target</th><th>Energy (MJ)</th><th>Balance</th><th>Status</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -509,24 +522,121 @@ function viewCalc(){
     </div>
 
     <div class="row">
-      <div class="col card">
-        <h3>Suggestions</h3>
+      <div class="col card"><h3>Suggestions</h3>
         <p class="small muted">Add these top surplus vessels to improve coverage:</p>
         <ul>${addList}</ul>
         <p class="small muted">Largest deficit to focus efficiency measures on: <strong>${focus}</strong></p>
       </div>
-      <div class="col card">
-        <h3>Tip (what-if)</h3>
+      <div class="col card"><h3>Tip (what-if)</h3>
         <p class="small muted">Every −1.0 gCO₂e/MJ on the largest deficit vessel improves balance by ~<code>1.0 × EnergyMJ</code> units.</p>
       </div>
     </div>
   </div>`;
 }
 
+/* -------------------- STATEMENT EXPORTS -------------------- */
+function exportCSV(){
+  const headers = ['From','To','AmountEUR','Type','InKind'];
+  const rows = (state.settlements?.transfers||[]).map(t=>[t.from,t.to,t.eur,t.type,(t.inKind||'')]);
+  const csv = [headers.join(','), ...rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','))].join('\n');
+  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=document.createElement('a'); a.href=url; a.download='pool_transfers.csv'; a.click(); URL.revokeObjectURL(url);
+}
+function exportJSON(){
+  const payload = {
+    pool: state.pool, fx: state.fx, transfers: state.settlements?.transfers||[]
+  };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+  const a=document.createElement('a'); a.href=url; a.download='pool_transfers.json'; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ------------ INFORMATION-ONLY PDF (printable HTML) ------------ */
+function generateStatementPDF(partyName){
+  if(!state.settlements){ computeSettlements(); }
+  const s = state.settlements;
+  const date = new Date().toISOString().slice(0,10);
+  const title = partyName ? `Settlement Statement — ${partyName}` : 'Settlement Statement — Pool';
+  const fx = `FX basis: ${state.fx.mode==='auto'?'ECB (auto)':'Manual (agreed)'} • EUR→USD ${state.fx.eurusd}`;
+  const transfers = s.transfers.filter(t=>{
+    if(!partyName) return true;
+    return t.from===partyName || t.to===partyName;
+  });
+
+  const totals = transfers.reduce((acc,t)=>{
+    acc.out += t.from===partyName ? t.eur : 0;
+    acc.in  += t.to===partyName   ? t.eur : 0;
+    return acc;
+  }, {in:0,out:0});
+
+  const tableRows = transfers.map(t=>`
+    <tr><td>${t.from}</td><td>${t.to}</td><td style="text-align:right">€ ${t.eur.toLocaleString()}</td><td>${t.type}</td><td>${t.inKind||''}</td></tr>`
+  ).join('') || `<tr><td colspan="5">No transfers for selection.</td></tr>`;
+
+  const style = `
+    <style>
+      body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:32px;color:#0b2845}
+      h1{font-size:20px;margin:0} .muted{color:#5b7894}
+      table{border-collapse:collapse;width:100%;margin-top:12px}
+      th,td{border-bottom:1px solid #e6eef5;padding:8px 10px;text-align:left;font-size:12px}
+      th{background:#f2f7fc}
+      .kpi{display:inline-block;margin-right:16px;font-size:13px}
+      .box{border:1px solid #e6eef5;border-radius:10px;padding:12px;margin-top:10px}
+      .note{font-size:11px;color:#5b7894;margin-top:12px}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+      .stamp{font-size:11px;border:1px solid #e6eef5;padding:4px 8px;border-radius:999px;background:#f9fbff}
+    </style>`;
+
+  const html = `
+    <html><head><meta charset="utf-8">${style}</head><body>
+      <div class="header">
+        <div>
+          <h1>${title}</h1>
+          <div class="muted">${state.pool.name} • Year ${state.pool.year}</div>
+          <div class="muted">Coordinator: ${state.pool.coordinator}</div>
+        </div>
+        <div><div class="stamp">Generated ${date}</div><div class="stamp" style="margin-top:6px">${fx}</div></div>
+      </div>
+
+      <div class="box">
+        <div class="kpi"><strong>Total surplus (EUR):</strong> € ${s.transfers.reduce((a,t)=>a+t.eur,0).toLocaleString()}</div>
+        ${partyName? `<div class="kpi"><strong>Received by ${partyName}:</strong> € ${totals.in.toLocaleString()}</div>
+        <div class="kpi"><strong>Payable by ${partyName}:</strong> € ${totals.out.toLocaleString()}</div>`:''}
+      </div>
+
+      <table>
+        <thead><tr><th>From</th><th>To</th><th style="text-align:right">Amount (EUR)</th><th>Type</th><th>In-kind details</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div class="box">
+        <div><strong>Notes:</strong></div>
+        <ul>
+          <li>Amounts reflect monetary translation of FuelEU pooling surpluses/deficits for the selected scope.</li>
+          <li>FX source & timing: ${fx}.</li>
+          <li>In-kind entries show agreed non-cash consideration (with optional monetary equivalent recorded). </li>
+        </ul>
+      </div>
+
+      <div class="note">
+        This Settlement Statement is provided for information purposes only and is <strong>not an invoice</strong>, tax document, or proof of payment.
+        Settlement between parties occurs outside the platform per the Pool Agreement.
+      </div>
+
+      <script>window.onload=()=>{window.print();}</script>
+    </body></html>
+  `;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
 /* -------------------- RENDER -------------------- */
 function render(){
   renderStepper();
   const views=[viewCreate,viewInvite,viewAgreement,viewAttach,viewPreview,viewSettlement,viewLock];
+  // ensure settlements present before step 5/6
+  if(state.step>=4 && !state.settlements) computeSettlements();
   document.getElementById('screen').innerHTML = views[state.step]();
 }
 render();
