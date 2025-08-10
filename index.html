@@ -551,6 +551,8 @@ function exportJSON(){
 }
 
 /* ------------ INFORMATION-ONLY PDF (printable HTML) ------------ */
+<script>
+/* ------------ INFORMATION-ONLY PDF (printable HTML) ------------ */
 function generateStatementPDF(partyName){
   if(!state.settlements){ computeSettlements(); }
   const s = state.settlements;
@@ -563,14 +565,19 @@ function generateStatementPDF(partyName){
   });
 
   const totals = transfers.reduce((acc,t)=>{
-    acc.out += t.from===partyName ? t.eur : 0;
-    acc.in  += t.to===partyName   ? t.eur : 0;
+    acc.out += partyName && t.from===partyName ? t.eur : 0;
+    acc.in  += partyName && t.to===partyName   ? t.eur : 0;
     return acc;
   }, {in:0,out:0});
 
   const tableRows = transfers.map(t=>`
-    <tr><td>${t.from}</td><td>${t.to}</td><td style="text-align:right">€ ${t.eur.toLocaleString()}</td><td>${t.type}</td><td>${t.inKind||''}</td></tr>`
-  ).join('') || `<tr><td colspan="5">No transfers for selection.</td></tr>`;
+    <tr>
+      <td>${t.from}</td>
+      <td>${t.to}</td>
+      <td style="text-align:right">€ ${t.eur.toLocaleString()}</td>
+      <td>${t.type}</td>
+      <td>${t.inKind||''}</td>
+    </tr>`).join('') || `<tr><td colspan="5">No transfers for selection.</td></tr>`;
 
   const style = `
     <style>
@@ -587,6 +594,7 @@ function generateStatementPDF(partyName){
     </style>`;
 
   const html = `
+    <!DOCTYPE html>
     <html><head><meta charset="utf-8">${style}</head><body>
       <div class="header">
         <div>
@@ -594,42 +602,53 @@ function generateStatementPDF(partyName){
           <div class="muted">${state.pool.name} • Year ${state.pool.year}</div>
           <div class="muted">Coordinator: ${state.pool.coordinator}</div>
         </div>
-        <div><div class="stamp">Generated ${date}</div><div class="stamp" style="margin-top:6px">${fx}</div></div>
+        <div>
+          <div class="stamp">Generated ${date}</div>
+          <div class="stamp" style="margin-top:6px">${fx}</div>
+        </div>
       </div>
 
       <div class="box">
-        <div class="kpi"><strong>Total surplus (EUR):</strong> € ${s.transfers.reduce((a,t)=>a+t.eur,0).toLocaleString()}</div>
-        ${partyName? `<div class="kpi"><strong>Received by ${partyName}:</strong> € ${totals.in.toLocaleString()}</div>
-        <div class="kpi"><strong>Payable by ${partyName}:</strong> € ${totals.out.toLocaleString()}</div>`:''}
+        <div class="kpi"><strong>Total settlement volume:</strong> € ${s.transfers.reduce((a,t)=>a+t.eur,0).toLocaleString()}</div>
+        ${partyName? `
+          <div class="kpi"><strong>Receivable for ${partyName}:</strong> € ${totals.in.toLocaleString()}</div>
+          <div class="kpi"><strong>Payable by ${partyName}:</strong> € ${totals.out.toLocaleString()}</div>` : ``}
       </div>
 
       <table>
-        <thead><tr><th>From</th><th>To</th><th style="text-align:right">Amount (EUR)</th><th>Type</th><th>In-kind details</th></tr></thead>
+        <thead>
+          <tr><th>From</th><th>To</th><th style="text-align:right">Amount (EUR)</th><th>Type</th><th>In-kind details</th></tr>
+        </thead>
         <tbody>${tableRows}</tbody>
       </table>
 
       <div class="box">
         <div><strong>Notes:</strong></div>
         <ul>
-          <li>Amounts reflect monetary translation of FuelEU pooling surpluses/deficits for the selected scope.</li>
+          <li>Amounts translate FuelEU surpluses/deficits into monetary terms based on the pool’s FX setting.</li>
           <li>FX source & timing: ${fx}.</li>
-          <li>In-kind entries show agreed non-cash consideration (with optional monetary equivalent recorded). </li>
+          <li>In-kind entries show agreed non-cash consideration (with optional monetary equivalent recorded).</li>
         </ul>
       </div>
 
       <div class="note">
-        This Settlement Statement is provided for information purposes only and is <strong>not an invoice</strong>, tax document, or proof of payment.
+        This Settlement Statement is for information only and is <strong>not an invoice</strong> or proof of payment.
         Settlement between parties occurs outside the platform per the Pool Agreement.
       </div>
-
-      <script>window.onload=()=>{window.print();}</script>
     </body></html>
   `;
 
   const w = window.open('', '_blank');
   w.document.write(html);
   w.document.close();
+
+  // Print after the new window is ready
+  w.addEventListener('load', () => { w.focus(); w.print(); });
+
+  // Fallback in case 'load' already fired
+  setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 600);
 }
+</script>
 
 /* -------------------- RENDER -------------------- */
 function render(){
