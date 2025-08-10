@@ -11,11 +11,13 @@
     --primary:#2f6df6; --primary-2:#1c3fa3; --accent:#00b8d9;
     --ok:#33d69f; --warn:#ffb020; --bad:#ff5c5c;
   }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
   header{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);background:#0d1829;position:sticky;top:0;z-index:5}
   .brand{display:flex;align-items:center;gap:10px}
   .logo{width:40px;height:40px;border:2px dashed #254165;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7bb2e6;font-size:10px}
-  h1{margin:0;font-size:16px;font-weight:800} .sub{color:var(--muted);font-size:12px}
+  h1{margin:0;font-size:16px;font-weight:800}
+  .sub{color:var(--muted);font-size:12px}
   .wrap{display:flex;min-height:100vh}
   nav{width:290px;border-right:1px solid var(--line);padding:16px;background:#0d1a2b;position:sticky;top:69px;height:calc(100vh - 69px);overflow:auto}
   .navtitle{font-size:12px;color:var(--muted);margin:8px}
@@ -23,12 +25,14 @@
   .nav button.active{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,109,246,.18) inset}
   main{flex:1;max-width:1100px;margin:0 auto;padding:20px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 8px 28px rgba(4,12,22,.35);margin-bottom:16px}
-  h2{font-size:18px;margin:6px 0 10px} h3{font-size:16px;margin:0 0 8px}
+  h2{font-size:18px;margin:6px 0 10px}
+  h3{font-size:16px;margin:0 0 8px}
   p.muted{color:var(--muted);font-size:13px;margin:6px 0 12px}
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
   input,select,textarea{width:100%;padding:10px 12px;background:#0b1a2a;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px}
   textarea{min-height:88px}
-  .row{display:flex;gap:16px;align-items:stretch} .col{flex:1}
+  .row{display:flex;gap:16px;align-items:stretch}
+  .col{flex:1}
   .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
   .right{display:flex;gap:8px}
   button{appearance:none;border:1px solid var(--line);background:#0f1c2e;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer}
@@ -45,12 +49,12 @@
   .tag.ok{border-color:#1f6e4a;color:#9be5c8;background:#0b261c}
   .tag.bad{border-color:#6b1d1d;color:#ffbdbd;background:#2a0d0d}
   .tag.warn{border-color:#5e4100;color:#ffd788;background:#2a1c00}
-  .note{font-size:12px;color:var(--muted)} .divider{height:1px;background:var(--line);margin:14px 0}
+  .note{font-size:12px;color:var(--muted)}
+  .divider{height:1px;background:var(--line);margin:14px 0}
   .matrix{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi .big{font-weight:800;font-size:22px}
   .small{font-size:12px}
-  .switch{display:inline-flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -59,7 +63,7 @@
     <div class="logo">LOGO</div>
     <div>
       <h1>Klaedes Advisory • FuelEU Pooling Platform</h1>
-      <div class="sub">Dark maritime prototype • Self-serve + vessel onboarding</div>
+      <div class="sub">Dark maritime demo • Self-serve + vessel onboarding + pool calculator</div>
     </div>
   </div>
   <div style="margin-left:auto" class="stepper" id="stepper"></div>
@@ -81,6 +85,9 @@
       <div><button onclick="nav('vessels')">Vessels (add/import)</button></div>
       <div><button onclick="nav('account')">Account & Org</button></div>
 
+      <div class="navtitle" style="margin-top:14px">Calculators</div>
+      <div><button onclick="nav('calc')">Pool Calculator</button></div>
+
       <div class="navtitle" style="margin-top:14px">Tools</div>
       <div><button onclick="nav('dash')">Dashboards</button></div>
       <div><button onclick="nav('forecast')">Forecasting</button></div>
@@ -94,10 +101,11 @@
 </div>
 
 <script>
+/* ------------------------ STATE ------------------------ */
 const state = {
   step: 0,
   org: { name: 'Klaedes Shipping (demo)', email:'demo@klaedes.io' },
-  targets: { 2025: 89.3, 2026: 86.8, 2027: 84.0 }, // gCO2e/MJ (editable in Vessels screen)
+  targets: { 2025: 89.3, 2026: 86.8, 2027: 84.0 }, // gCO2e/MJ (editable)
   fx: { eurusd: 1.10 },
   vessels: JSON.parse(localStorage.getItem('vessels')||'[]'), // {imo,name,type,year,energyMJ,achieved,currency,mode,balance}
   pool:{ name:'2026 Global Pool', year:2026, coordinator:'Klaedes Shipping', coCoordinator:true},
@@ -109,10 +117,11 @@ const state = {
   ],
   pricing:{ basePerVesselEUR:250, percentOfSettlement:0.003 },
   penaltyRatePerUnitEUR:0.0024,
-  settlements:null
+  settlements:null,
+  calcSel:null
 };
 
-// ------------- helpers
+/* ------------------------ HELPERS ------------------------ */
 function save(){ localStorage.setItem('vessels', JSON.stringify(state.vessels)); }
 function renderStepper(){
   const steps = ['Create Pool','Invite Members','Pool Agreement','Attach Vessels','Preview & Pricing','Settlement Matrix','Lock & Share'];
@@ -123,6 +132,7 @@ function nav(which){
   const el = document.getElementById('screen');
   if(which==='vessels'){ el.innerHTML = viewVessels(); }
   else if(which==='account'){ el.innerHTML = viewAccount(); }
+  else if(which==='calc'){ el.innerHTML = viewCalc(); }
   else if(which==='dash'){ el.innerHTML = `<div class="card"><h2>Dashboards</h2><p class="muted">Role-based KPIs.</p></div>`; }
   else if(which==='forecast'){ el.innerHTML = `<div class="card"><h2>Forecasting</h2><p class="muted">What-ifs coming soon.</p></div>`; }
   else if(which==='integrations'){ el.innerHTML = `<div class="card"><h2>Integrations</h2><p class="muted">EU MRV nightly; Voyages/E-logs real-time.</p></div>`; }
@@ -132,8 +142,13 @@ function nav(which){
   renderStepper();
 }
 function toEUR(amount, currency){ if(currency==='EUR') return amount; if(currency==='USD') return amount/state.fx.eurusd; return amount; }
+function recompute(v){
+  const target = state.targets[v.year] ?? 0;
+  const delta = Number(v.achieved) - Number(target);
+  v.balance = Math.round(delta * Number(v.energyMJ||0));
+}
 
-// ------------- pooling flow (short)
+/* -------------------- 7-STEP FLOW VIEWS -------------------- */
 function viewCreate(){
   const p=state.pool;
   return `<div class="card">
@@ -193,7 +208,6 @@ function viewAttach(){
   </div>`;
 }
 function computeSettlements(){
-  // Sum balances per org by name in demo (all belong to same org here)
   const selected = state.vessels.filter(v=>v.year==state.pool.year && v.mode==='Pool');
   const net = selected.reduce((a,b)=>a + (b.balance||0), 0);
   const creditors = selected.filter(v=>v.balance>0);
@@ -206,10 +220,10 @@ function computeSettlements(){
     c[i].amt-=pay; debtors[j].amt-=pay;
     if(c[i].amt<=1) i++; if(debtors[j].amt<=1) j++;
   }
-  const settlementVolumeEUR = transfers.reduce((a,t)=>a+t.eur,0);
+  const volume = transfers.reduce((a,t)=>a+t.eur,0);
   const base = state.pricing.basePerVesselEUR * selected.length;
-  const pct = settlementVolumeEUR * state.pricing.percentOfSettlement;
-  state.settlements={ net, transfers, volume:settlementVolumeEUR, fees:{base,pct,total:base+pct} };
+  const pct = volume * state.pricing.percentOfSettlement;
+  state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct} };
 }
 function viewPreview(){
   computeSettlements();
@@ -264,12 +278,7 @@ function viewLock(){
   </div>`;
 }
 
-// ------------- VESSELS manager (add/import + compute)
-function recompute(v){
-  const target = state.targets[v.year] ?? 0;
-  const delta = Number(v.achieved) - Number(target);
-  v.balance = Math.round(delta * Number(v.energyMJ||0)); // units
-}
+/* -------------------- VESSELS MANAGER -------------------- */
 function addVessel(){
   const v = {
     imo:document.getElementById('v_imo').value.trim(),
@@ -281,27 +290,29 @@ function addVessel(){
     currency:document.getElementById('v_curr').value,
     mode:document.getElementById('v_mode').value
   };
+  if(!v.imo || !v.name){ alert('IMO and Name are required.'); return; }
   recompute(v);
   state.vessels.push(v); save(); render();
 }
 function importCSV(file){
+  // CSV columns: IMO,Name,Type,Year,EnergyMJ,AchievedIntensity_gCO2e_per_MJ,Currency
   const reader = new FileReader();
   reader.onload = e=>{
     const rows = (e.target.result||'').toString().split(/\r?\n/).filter(Boolean);
-    const header = rows.shift().split(',');
-    const idx = (k)=> header.findIndex(h=>h.trim().toLowerCase()===k);
+    const header = rows.shift().split(',').map(h=>h.trim().toLowerCase());
+    const idx = k=> header.findIndex(h=>h===k);
     rows.forEach(line=>{
       const c = line.split(',');
       const v = {
         imo:c[idx('imo')], name:c[idx('name')], type:c[idx('type')],
         year:+c[idx('year')], energyMJ:+c[idx('energymj')],
-        achieved:+c[idx('achievedintensity_gco2e_per_mj')], currency:c[idx('currency')]||'EUR',
-        mode:'Standalone'
+        achieved:+(c[idx('achievedintensity_gco2e_per_mj')]||c[idx('achieved_gco2e_per_mj')]),
+        currency:c[idx('currency')]||'EUR', mode:'Standalone'
       };
       if(!v.imo) return;
       recompute(v); state.vessels.push(v);
     });
-    save(); render();
+    save(); render(); alert('CSV imported.');
   };
   reader.readAsText(file);
 }
@@ -310,7 +321,7 @@ function viewVessels(){
     <tr>
       <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type}</td><td>${v.year}</td>
       <td class="kbd">${v.achieved}</td><td class="kbd">${state.targets[v.year]??0}</td>
-      <td class="kbd">${v.energyMJ.toLocaleString()}</td>
+      <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
       <td class="kbd">${(v.balance??0).toLocaleString()}</td>
       <td><select onchange="state.vessels[${i}].mode=this.value; save(); render()"><option ${v.mode==='Pool'?'selected':''}>Pool</option><option ${v.mode==='Standalone'?'selected':''}>Standalone</option></select></td>
       <td><button class="ghost" onclick="state.vessels.splice(${i},1); save(); render()">Remove</button></td>
@@ -347,7 +358,7 @@ function viewVessels(){
   </div>`;
 }
 
-// ------------- account/org (demo)
+/* -------------------- ACCOUNT / ADMIN -------------------- */
 function viewAccount(){
   return `<div class="card">
     <h2>Account & Organization</h2>
@@ -373,6 +384,146 @@ function viewAdmin(){
   </div>`;
 }
 
+/* --------------- POOL EFFICIENCY CALCULATOR --------------- */
+// Weighted by energy across last 12 months
+function computeWeighted(vLogs){
+  const E = vLogs.reduce((a,b)=>a + (b.energyMJ||0), 0);
+  if(!E) return { achieved: 0, energyMJ: 0 };
+  const achieved = vLogs.reduce((a,b)=>a + (b.achieved*(b.energyMJ||0)), 0) / E;
+  return { achieved, energyMJ: E };
+}
+// Import last 12-month logs CSV and recompute vessel balances
+function importPoolLogs(file){
+  // CSV columns: IMO,Month,EnergyMJ,Achieved_gCO2e_per_MJ
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const rows = (e.target.result||'').toString().split(/\r?\n/).filter(Boolean);
+    const header = rows.shift().split(',').map(x=>x.trim().toLowerCase());
+    const idx = k => header.findIndex(h=>h===k);
+    const grouped = {};
+    rows.forEach(line=>{
+      const c = line.split(',');
+      const imo = (c[idx('imo')]||'').trim();
+      if(!imo) return;
+      grouped[imo] = grouped[imo] || [];
+      grouped[imo].push({
+        month: c[idx('month')],
+        energyMJ: +c[idx('energymj')] || 0,
+        achieved: +c[idx('achieved_gco2e_per_mj')] || +c[idx('achievedintensity_gco2e_per_mj')] || 0
+      });
+    });
+    (state.vessels||[]).forEach(v=>{
+      if(grouped[v.imo]){
+        const w = computeWeighted(grouped[v.imo]);
+        v.energyMJ = Math.round(w.energyMJ);
+        v.achieved = +w.achieved.toFixed(2);
+        recompute(v);
+      }
+    });
+    save(); render();
+    alert('Logs imported. Balances recalculated from last 12 months.');
+  };
+  reader.readAsText(file);
+}
+// Compute coverage & stress test
+function poolEfficiency(selected){
+  const surplus = selected.reduce((a,v)=> a + Math.max(0, v.balance||0), 0);
+  const deficit = selected.reduce((a,v)=> a + Math.max(0, -(v.balance||0)), 0);
+  const coverage = deficit ? surplus/deficit : Infinity;
+  const stressCoverage = deficit ? (surplus*0.90) / (deficit*1.05) : Infinity;
+
+  let verdict = "Fail", level="bad";
+  if(coverage >= 1.20){ verdict = "Strong Pass"; level="ok"; }
+  else if(coverage >= 1.00){ verdict = "Pass"; level="ok"; }
+  else if(coverage >= 0.80){ verdict = "Marginal"; level="warn"; }
+
+  return { surplus, deficit, coverage, stressCoverage, verdict, level };
+}
+function calculatorSuggestions(selected, all){
+  const chosenIds = new Set(selected.map(v=>v.imo));
+  const notChosen = all.filter(v=>!chosenIds.has(v.imo));
+  const extraSurplus = notChosen.filter(v=> (v.balance||0) > 0).sort((a,b)=> (b.balance||0)-(a.balance||0)).slice(0,3);
+  const worstDeficit = selected.filter(v=> (v.balance||0)<0).sort((a,b)=> (a.balance||0)-(b.balance||0))[0];
+  return { add: extraSurplus, focus: worstDeficit };
+}
+function viewCalc(){
+  const year = state.pool?.year || 2026;
+  const all = (state.vessels||[]).filter(v=>v.year==year);
+  if(!state.calcSel) state.calcSel = new Set(all.filter(v=>v.mode==='Pool').map(v=>v.imo));
+  const sel = all.filter(v=>state.calcSel.has(v.imo));
+
+  const ef = poolEfficiency(sel);
+  const sugg = calculatorSuggestions(sel, all);
+
+  const rows = all.map(v=>`
+    <tr>
+      <td><input type="checkbox" ${state.calcSel.has(v.imo)?'checked':''} onclick="this.checked?state.calcSel.add('${v.imo}'):state.calcSel.delete('${v.imo}'); render()"></td>
+      <td>${v.name}</td>
+      <td class="small">${v.imo}</td>
+      <td>${v.type||''}</td>
+      <td class="kbd">${v.achieved??''}</td>
+      <td class="kbd">${state.targets?.[v.year]??''}</td>
+      <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
+      <td class="kbd">${(v.balance??0).toLocaleString()}</td>
+      <td><span class="tag ${v.balance>0?'ok':(v.balance<0?'bad':'warn')}">${v.balance>0?'Surplus':(v.balance<0?'Deficit':'Flat')}</span></td>
+    </tr>`).join('') || `<tr><td colspan="9">No vessels for ${year}. Add/import in “Vessels”.</td></tr>`;
+
+  const cov = isFinite(ef.coverage) ? (ef.coverage*100).toFixed(0)+'%' : '—';
+  const scv = isFinite(ef.stressCoverage) ? (ef.stressCoverage*100).toFixed(0)+'%' : '—';
+  const badge = `tag ${ef.level}`;
+
+  const addList = (sugg.add||[]).map(v=>`<li>${v.name} (+${v.balance.toLocaleString()}u)</li>`).join('') || '<li>No obvious additions</li>';
+  const focus = sugg.focus ? `${sugg.focus.name} (${sugg.focus.balance.toLocaleString()}u deficit)` : 'None';
+
+  return `
+  <div class="card">
+    <h2>Pool Efficiency Calculator</h2>
+    <p class="muted">Import 12-month logs, select vessels, and see if your pool will cover deficits. We recompute balances using weighted intensity across the year.</p>
+
+    <div class="row">
+      <div class="col card">
+        <h3>Import last 12 months</h3>
+        <p class="small muted">CSV: <code>IMO,Month,EnergyMJ,Achieved_gCO2e_per_MJ</code></p>
+        <input type="file" accept=".csv" onchange="importPoolLogs(this.files[0])">
+        <p class="small muted" style="margin-top:8px">We recompute each vessel’s weighted intensity and balance units.</p>
+      </div>
+
+      <div class="col card">
+        <h3>Result</h3>
+        <div class="row">
+          <div class="col kpi"><div class="muted">Total surplus</div><div class="big">${(ef.surplus||0).toLocaleString()} u</div></div>
+          <div class="col kpi"><div class="muted">Total deficit</div><div class="big">${(ef.deficit||0).toLocaleString()} u</div></div>
+          <div class="col kpi"><div class="muted">Coverage</div><div class="big">${cov}</div></div>
+          <div class="col kpi"><div class="muted">Stress coverage</div><div class="big">${scv}</div></div>
+        </div>
+        <p>Verdict: <span class="${badge}">${ef.verdict}</span></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Build your candidate pool</h3>
+      <div class="matrix"><table>
+        <thead><tr><th>Use</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Achieved</th><th>Target</th><th>Energy (MJ)</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>
+
+    <div class="row">
+      <div class="col card">
+        <h3>Suggestions</h3>
+        <p class="small muted">Add these top surplus vessels to improve coverage:</p>
+        <ul>${addList}</ul>
+        <p class="small muted">Largest deficit to focus efficiency measures on: <strong>${focus}</strong></p>
+      </div>
+      <div class="col card">
+        <h3>Tip (what-if)</h3>
+        <p class="small muted">Every −1.0 gCO₂e/MJ on the largest deficit vessel improves balance by ~<code>1.0 × EnergyMJ</code> units.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* -------------------- RENDER -------------------- */
 function render(){
   renderStepper();
   const views=[viewCreate,viewInvite,viewAgreement,viewAttach,viewPreview,viewSettlement,viewLock];
