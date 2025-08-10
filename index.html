@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klaedes Advisory – FuelEU Pooling Platform (Prototype)</title>
+<style>
+  :root{
+    --bg:#f6f9fc; --panel:#ffffff; --line:#e6eef5; --text:#0b2845; --muted:#5b7894;
+    --primary:#0a5ac2; --primary-2:#084a9d; --accent:#00a5c8; --ok:#1f9d55; --warn:#c47f00; --bad:#c23030;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo-ph{width:40px;height:40px;border:2px dashed #c8d8e6;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#7aa0bf;font-size:10px}
+  h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:12px}
+  .wrap{display:flex;min-height:100vh}
+  nav{width:280px;border-right:1px solid var(--line);padding:16px;background:#fbfdff;position:sticky;top:69px;height:calc(100vh - 69px);overflow:auto}
+  .navsec{margin-bottom:14px}
+  .navtitle{font-size:12px;color:var(--muted);margin:8px 8px}
+  .nav button{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;padding:10px 12px;border-radius:10px;margin:6px 0;font-size:14px;color:var(--text);cursor:pointer}
+  .nav button.active{border-color:var(--primary);box-shadow:0 0 0 3px rgba(10,90,194,.12) inset}
+  main{flex:1;max-width:1100px;margin:0 auto;padding:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(10,40,80,.04);margin-bottom:16px}
+  h2{font-size:18px;margin:6px 0 10px}
+  h3{font-size:16px;margin:0 0 8px}
+  p.muted{color:var(--muted);font-size:13px;margin:6px 0 12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+  input,select,textarea{width:100%;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px}
+  textarea{min-height:88px}
+  .row{display:flex;gap:16px;align-items:stretch}
+  .col{flex:1}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
+  .right{display:flex;gap:8px}
+  button{appearance:none;border:1px solid var(--line);background:#fff;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer}
+  button.primary{background:linear-gradient(180deg,var(--primary),var(--primary-2));border-color:var(--primary);color:#fff}
+  button.ghost{background:#fff;border-color:var(--line);color:var(--muted)}
+  .stepper{display:flex;gap:6px;flex-wrap:wrap}
+  .step{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);background:#fff}
+  .step.active{border-color:var(--primary);color:#073570}
+  table{border-collapse:collapse;width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;font-size:13px}
+  th{color:#0b3d73;font-weight:700;background:#f2f7fc}
+  .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;border:1px solid var(--line);background:#f6f9fc;padding:2px 6px;border-radius:6px}
+  .tag{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff;display:inline-block}
+  .tag.ok{border-color:#bfe7c9;color:#1f7a3a;background:#f4fbf6}
+  .tag.bad{border-color:#f3c1c1;color:#8f2a2a;background:#fff7f7}
+  .tag.warn{border-color:#f3dfb7;color:#7a5a1f;background:#fffbf0}
+  .note{font-size:12px;color:var(--muted)}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .matrix{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .kpi{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .kpi .big{font-weight:800;font-size:22px}
+  .shadow{box-shadow:0 8px 28px rgba(9,30,66,.08)}
+  .small{font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo-ph">LOGO</div>
+    <div>
+      <h1>Klaedes Advisory • FuelEU Pooling Platform</h1>
+      <div class="sub">Commercial + Compliance • Light Maritime Prototype</div>
+    </div>
+  </div>
+  <div style="margin-left:auto" class="stepper" id="stepper"></div>
+</header>
+
+<div class="wrap">
+  <nav>
+    <div class="nav">
+      <div class="navsec">
+        <div class="navtitle">7-step flow</div>
+        <button class="active" onclick="go(0)">1. Create Pool</button>
+        <button onclick="go(1)">2. Invite Members</button>
+        <button onclick="go(2)">3. Pool Agreement</button>
+        <button onclick="go(3)">4. Attach Vessels</button>
+        <button onclick="go(4)">5. Preview & Pricing</button>
+        <button onclick="go(5)">6. Settlement Matrix</button>
+        <button onclick="go(6)">7. Lock & Share</button>
+      </div>
+      <div class="navsec">
+        <div class="navtitle">Tools</div>
+        <button onclick="openTools('dash')">Role Dashboards</button>
+        <button onclick="openTools('forecast')">Forecasting</button>
+        <button onclick="openTools('integrations')">Integrations</button>
+        <button onclick="openTools('synergy')">FuelEU ↔ ETS</button>
+        <button onclick="openTools('ledger')">Banking / Borrowing</button>
+        <button onclick="openTools('settings')">Platform Admin</button>
+      </div>
+    </div>
+  </nav>
+  <main id="screen"></main>
+</div>
+
+<script>
+const state = {
+  step: 0,
+  pool: { name:'2026 Global Maritime Pool', year:2026, coordinator:'Klaedes Shipping', coCoordinator:true },
+  invites: [
+    { org:'MedBlue Lines', role:'Member', status:'Accepted' },
+    { org:'ArcticWave Shipping', role:'Member', status:'Pending' },
+    { org:'EuroBulk Carriers', role:'Member', status:'Accepted' },
+    { org:'Pacific Star Ferries', role:'Member', status:'Accepted' }
+  ],
+  vessels:[
+    { imo:'9300001', name:'MedBlue Athena', type:'Container', balance: 320000, currency:'EUR' },
+    { imo:'9300002', name:'ArcticWave Fjord', type:'LNG', balance:-210000, currency:'USD' },
+    { imo:'9300003', name:'EuroBulk Titan', type:'Bulk', balance:-95000, currency:'EUR' },
+    { imo:'9300004', name:'Pacific Star Breeze', type:'Passenger', balance: 180000, currency:'USD' },
+    { imo:'9300005', name:'Klaedes One', type:'Container', balance: 240000, currency:'EUR' },
+    { imo:'9300006', name:'MedBlue Aegean', type:'Container', balance:-70000, currency:'EUR' }
+  ],
+  pricing: {
+    model:'hybrid',
+    basePerVesselEUR: 250,
+    percentOfSettlement: 0.003,
+    visibleToCoordinatorOnly: true
+  },
+  fx: { mode:'auto', rateEURUSD: 1.10, autoUpdates:true },
+  penaltyRatePerUnitEUR: 0.0024,
+  agreement: {
+    version: 3,
+    esignProvider: 'DocuSign',
+    clauses:[
+      { id:'scope', title:'Scope & Parties', text:'[Placeholder] This Pooling Agreement is entered into between the Coordinator and Members listed herein.' },
+      { id:'definitions', title:'Definitions', text:'[Placeholder] BIMCO-inspired definitions for RFNBO, OPS, GHG intensity, Banking, Borrowing.' },
+      { id:'pricing', title:'Pricing Terms', text:'[Placeholder] Price floor: €0.0015/unit; Price ceiling: €0.0040/unit; Payment terms: 30 days; Late penalties: 1.5%/month.' },
+      { id:'fx', title:'FX & Currency', text:'[Placeholder] Coordinator may elect Manual FX or Automated ECB FX. Automated FX updates apply until pool is locked.' },
+      { id:'in-kind', title:'In-kind Settlement', text:'[Placeholder] In-kind consideration permitted; monetary equivalent shall be recorded for ROI and audit.' },
+      { id:'verifier', title:'Verifier Access & Data', text:'[Placeholder] Verifier access may be full-read or restricted; storage of verifier documents is optional per party.' },
+      { id:'governance', title:'Governance', text:'[Placeholder] Coordinator / Co-Coordinator rights; dispute resolution; versioning.' }
+    ]
+  },
+  settlements: [],
+  currency: 'EUR'
+};
+
+function renderStepper(){
+  const steps = ['Create Pool','Invite Members','Pool Agreement','Attach Vessels','Preview & Pricing','Settlement Matrix','Lock & Share'];
+  const el = document.getElementById('stepper');
+  el.innerHTML = steps.map((t,i)=>`<div class="step ${i===state.step?'active':''}">${i+1}. ${t}</div>`).join('');
+}
+function go(i){ state.step=i; render(); }
+
+function toEUR(amount, currency){
+  if(currency==='EUR') return amount;
+  if(currency==='USD') return amount / state.fx.rateEURUSD;
+  return amount;
+}
+function eurTo(amount, currency){
+  if(currency==='EUR') return amount;
+  if(currency==='USD') return amount * state.fx.rateEURUSD;
+  return amount;
+}
+
+function computeHybridFees(settlementVolumeEUR, vesselCount){
+  const base = state.pricing.basePerVesselEUR * vesselCount;
+  const pct = settlementVolumeEUR * state.pricing.percentOfSettlement;
+  return { base, pct, total: base + pct };
+}
+
+function viewCreate(){
+  const p = state.pool;
+  return `
+    <div class="card shadow">
+      <h2>1. Create Pool</h2>
+      <p class="muted">Name your pool, set the reporting year, and choose coordinator roles.</p>
+      <div class="row">
+        <div class="col">
+          <label>Pool name</label><input value="${p.name}">
+          <label>Reporting year</label>
+          <select><option>2025</option><option selected>2026</option><option>2027</option></select>
+          <label>Coordinator</label><input value="${p.coordinator}">
+          <label><input type="checkbox" ${p.coCoordinator?'checked':''} onclick="state.pool.coCoordinator=this.checked"> Enable co-coordinator</label>
+        </div>
+        <div class="col">
+          <div class="kpi"><div class="muted">Mode</div><div class="big">Pooling & Solo</div></div>
+          <div class="kpi"><div class="muted">Banking & Borrowing</div><div class="big">Enabled</div></div>
+          <div class="kpi"><div class="muted">Verifier storage</div><div class="big">Optional per party</div></div>
+        </div>
+      </div>
+      <div class="toolbar"><span class="note">Draft — you can edit until locked.</span><div class="right"><button class="primary" onclick="go(1)">Continue →</button></div></div>
+    </div>`;
+}
+
+function viewInvite(){
+  const rows = state.invites.map(r=>`
+    <div class="item" style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:10px 0">
+      <div><strong>${r.org}</strong><div class="small">${r.role}</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag ${r.status==='Accepted'?'ok':(r.status==='Pending'?'warn':'')}">${r.status}</span>
+        <button class="ghost" onclick="alert('Resent invite to ${r.org}')">Resend</button>
+        <button onclick="alert('Removed ${r.org}')">Remove</button>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="card shadow">
+      <h2>2. Invite Members</h2>
+      <p class="muted">Invite external companies to participate and sign the pool agreement.</p>
+      <div class="row">
+        <div class="col card">
+          <label>Org email or ID</label><input placeholder="compliance@company.com">
+          <label>Role</label><select><option>Member</option><option>Co-Coordinator</option></select>
+          <label>Message</label><textarea placeholder="Add a short note…"></textarea>
+          <div class="toolbar"><span class="note">Invites include access controls & NDAs.</span><div class="right"><button>Send Invite</button></div></div>
+        </div>
+        <div class="col card">${rows}</div>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(0)">← Back</button><div class="right"><button class="primary" onclick="go(2)">Continue →</button></div></div>
+    </div>`;
+}
+
+function viewAgreement(){
+  const clauses = state.agreement.clauses.map((c,i)=>`
+    <div class="card">
+      <h3>${i+1}. ${c.title}</h3>
+      <textarea oninput="state.agreement.clauses[${i}].text=this.value">${c.text}</textarea>
+    </div>
+  `).join('');
+  return `
+    <div class="card shadow">
+      <h2>3. Pool Agreement (BIMCO-inspired, placeholder)</h2>
+      <p class="muted">Auto-filled parties, vessels & pricing terms. Clause-level editing; choose your e-sign provider.</p>
+      <div class="row">
+        <div class="col">
+          <label>Agreement version</label>
+          <input value="v${state.agreement.version}" readonly>
+        </div>
+        <div class="col">
+          <label>E-sign provider</label>
+          <select onchange="state.agreement.esignProvider=this.value">
+            <option ${state.agreement.esignProvider==='DocuSign'?'selected':''}>DocuSign</option>
+            <option ${state.agreement.esignProvider==='Adobe Sign'?'selected':''}>Adobe Sign</option>
+          </select>
+        </div>
+      </div>
+      <div class="divider"></div>
+      ${clauses}
+      <div class="toolbar">
+        <span class="note">Editing placeholders only — integrate your legal text later.</span>
+        <div class="right">
+          <button class="ghost" onclick="alert('Preview PDF')">Preview PDF</button>
+          <button onclick="alert('Sent to '+state.agreement.esignProvider)">Send for E-sign</button>
+        </div>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(1)">← Back</button><div class="right"><button class="primary" onclick="go(3)">Continue →</button></div></div>
+    </div>`;
+}
+
+function viewAttach(){
+  const rows = state.vessels.map(v=>`
+    <tr>
+      <td><input type="checkbox" checked></td>
+      <td>${v.name}</td><td class="small muted">${v.imo}</td><td>${v.type}</td>
+      <td>${v.balance>0?'<span class="tag ok">Surplus</span>':'<span class="tag bad">Deficit</span>'}</td>
+      <td class="kbd">${v.balance.toLocaleString()}</td>
+      <td><button class="ghost" onclick="alert('Calc trace for ${v.name}')">Trace</button></td>
+    </tr>`).join('');
+  return `
+    <div class="card shadow">
+      <h2>4. Attach Vessels</h2>
+      <p class="muted">Assign whole-vessel annual balances to this pool. A vessel cannot be in more than one pool in the same year.</p>
+      <div class="matrix">
+        <table>
+          <thead><tr><th>Use</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Status</th><th>Balance units</th><th>Audit</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(2)">← Back</button><div class="right"><button class="primary" onclick="go(4)">Continue →</button></div></div>
+    </div>`;
+}
+
+function computeSettlements(){
+  const orgMap = {
+    'MedBlue Lines':['MedBlue Athena','MedBlue Aegean'],
+    'ArcticWave Shipping':['ArcticWave Fjord'],
+    'EuroBulk Carriers':['EuroBulk Titan'],
+    'Pacific Star Ferries':['Pacific Star Breeze'],
+    'Klaedes Shipping':['Klaedes One']
+  };
+  const vByName = Object.fromEntries(state.vessels.map(v=>[v.name,v]));
+  const orgBalancesEUR = {};
+  for(const [org, names] of Object.entries(orgMap)){
+    const sum = names.reduce((a,n)=> a + toEUR(vByName[n].balance, vByName[n].currency), 0);
+    orgBalancesEUR[org] = sum;
+  }
+  const creditors = Object.entries(orgBalancesEUR).filter(([k,v])=>v>0);
+  const debtors = Object.entries(orgBalancesEUR).filter(([k,v])=>v<0).map(([k,v])=>[k, Math.abs(v)]);
+  const transfers = [];
+  let i=0,j=0;
+  const c = creditors.map(([k,v])=>({org:k, amt:v}));
+  const d = debtors.map(([k,v])=>({org:k, amt:v}));
+  while(i<c.length && j<d.length){
+    const pay = Math.min(c[i].amt, d[j].amt);
+    transfers.push({from:d[j].org, to:c[i].org, units:pay, currency:'EUR', type:'Cash', fx:1.0});
+    c[i].amt -= pay; d[j].amt -= pay;
+    if(c[i].amt<=0.0001) i++;
+    if(d[j].amt<=0.0001) j++;
+  }
+  const vesselCount = state.vessels.length;
+  const settlementVolumeEUR = transfers.reduce((a,t)=>a + t.units, 0);
+  const fees = computeHybridFees(settlementVolumeEUR, vesselCount);
+  state.settlements = { transfers, orgBalancesEUR, settlementVolumeEUR, fees };
+}
+
+function viewPreview(){
+  if(!state.settlements || !state.settlements.transfers) computeSettlements();
+  const net = state.vessels.reduce((a,b)=> a + toEUR(b.balance,b.currency), 0);
+  const euroValue = Math.abs(net) * state.penaltyRatePerUnitEUR;
+  const fee = state.settlements.fees;
+
+  return `
+    <div class="card shadow">
+      <h2>5. Preview & Pricing</h2>
+      <p class="muted">Review pool netting and set platform hybrid pricing (base per vessel + % of settlement).</p>
+      <div class="row">
+        <div class="col">
+          <div class="kpi"><div class="muted">Net units (EUR basis)</div><div class="big">${net.toLocaleString()}</div></div>
+          <div class="kpi"><div class="muted">Indicative € flow at penalty rate</div><div class="big">€ ${euroValue.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
+        </div>
+        <div class="col card">
+          <h3>Platform Hybrid Pricing (admin)</h3>
+          <label>Base fee per vessel (EUR / year)</label><input value="${state.pricing.basePerVesselEUR}" oninput="state.pricing.basePerVesselEUR=+this.value; render()">
+          <label>% of settlement volume</label><input value="${(state.pricing.percentOfSettlement*100).toFixed(2)}%" oninput="state.pricing.percentOfSettlement=parseFloat(this.value)/100; render()">
+          <div class="divider"></div>
+          <div class="small">Estimated for this pool:</div>
+          <div class="row">
+            <div class="col kpi"><div class="muted">Vessels</div><div class="big">${state.vessels.length}</div></div>
+            <div class="col kpi"><div class="muted">Settlement volume</div><div class="big">€ ${state.settlements.settlementVolumeEUR.toLocaleString()}</div></div>
+            <div class="col kpi"><div class="muted">Base fees</div><div class="big">€ ${fee.base.toLocaleString()}</div></div>
+            <div class="col kpi"><div class="muted">% fees</div><div class="big">€ ${fee.pct.toLocaleString()}</div></div>
+            <div class="col kpi"><div class="muted">Total</div><div class="big">€ ${fee.total.toLocaleString()}</div></div>
+          </div>
+          <p class="small muted">Fees visible to coordinator only.</p>
+        </div>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(3)">← Back</button><div class="right"><button class="primary" onclick="go(5)">Continue →</button></div></div>
+    </div>`;
+}
+
+function viewSettlement(){
+  if(!state.settlements || !state.settlements.transfers) computeSettlements();
+  const transfers = state.settlements.transfers;
+  const rows = transfers.map(t=>`
+    <tr>
+      <td>${t.from}</td><td>${t.to}</td>
+      <td class="kbd">€ ${t.units.toLocaleString()}</td>
+      <td>
+        <select onchange="t.type=this.value; render()">
+          <option ${t.type==='Cash'?'selected':''}>Cash</option>
+          <option ${t.type==='In-kind'?'selected':''}>In-kind</option>
+          <option ${t.type==='Mixed'?'selected':''}>Mixed</option>
+        </select>
+      </td>
+      <td><input value="${t.type==='Cash'?'—':'Cargo slots / 5 voyage days'}" /></td>
+      <td class="kbd">€ ${(t.units * state.pricing.percentOfSettlement).toFixed(2)}</td>
+      <td><button class="ghost" onclick="alert('Invoice PDF generated')">Invoice PDF</button> <button class="ghost" onclick="alert('UBL e-invoice exported')">Export UBL</button></td>
+    </tr>
+  `).join('');
+
+  const orgs = new Set(transfers.flatMap(t=>[t.from,t.to]));
+  const roiRows = Array.from(orgs).map(org=>{
+    const paid = transfers.filter(t=>t.from===org).reduce((a,b)=>a+b.units,0);
+    const received = transfers.filter(t=>t.to===org).reduce((a,b)=>a+b.units,0);
+    const avoided = (paid) * state.penaltyRatePerUnitEUR;
+    const platformFeeShare = state.settlements.fees.total / orgs.size;
+    return `<tr><td>${org}</td><td class="kbd">€ ${paid.toLocaleString()}</td><td class="kbd">€ ${received.toLocaleString()}</td><td class="kbd">€ ${avoided.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td class="kbd">€ ${platformFeeShare.toLocaleString(undefined,{maximumFractionDigits:0})}</td></tr>`;
+  }).join('');
+
+  return `
+    <div class="card shadow">
+      <h2>6. Settlement Matrix</h2>
+      <p class="muted">Multi-currency support, invoices, in-kind options, and ROI. FX source can be manual or automated (ECB).</p>
+      <div class="row">
+        <div class="col card">
+          <h3>FX Settings</h3>
+          <label>Mode</label>
+          <select onchange="state.fx.mode=this.value; render()">
+            <option ${state.fx.mode==='auto'?'selected':''} value="auto">Automated ECB</option>
+            <option ${state.fx.mode==='manual'?'selected':''} value="manual">Manual (agreed)</option>
+          </select>
+          <label>EUR→USD rate</label>
+          <input value="${state.fx.rateEURUSD}" oninput="state.fx.rateEURUSD=parseFloat(this.value)||1.0; if(state.fx.autoUpdates) computeSettlements(); render()">
+          <label><input type="checkbox" ${state.fx.autoUpdates?'checked':''} onclick="state.fx.autoUpdates=this.checked"> Auto-update settlements on rate change</label>
+        </div>
+        <div class="col card">
+          <h3>Platform fee (hybrid)</h3>
+          <div class="row">
+            <div class="col kpi"><div class="muted">Base</div><div class="big">€ ${state.settlements.fees.base.toLocaleString()}</div></div>
+            <div class="col kpi"><div class="muted">% Fee</div><div class="big">€ ${state.settlements.fees.pct.toLocaleString()}</div></div>
+            <div class="col kpi"><div class="muted">Total</div><div class="big">€ ${state.settlements.fees.total.toLocaleString()}</div></div>
+          </div>
+          <p class="small muted">Visible to coordinator only.</p>
+        </div>
+      </div>
+      <div class="matrix">
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>Amount (EUR)</th><th>Type</th><th>In-kind details</th><th>Platform % Fee (EUR)</th><th>Invoices</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="divider"></div>
+      <h3>ROI vs avoided penalties (illustrative)</h3>
+      <div class="matrix">
+        <table>
+          <thead><tr><th>Participant</th><th>Paid</th><th>Received</th><th>Avoided penalty (proxy)</th><th>Platform fee share</th></tr></thead>
+          <tbody>${roiRows}</tbody>
+        </table>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(4)">← Back</button><div class="right"><button class="primary" onclick="go(6)">Continue →</button></div></div>
+    </div>`;
+}
+
+function viewLock(){
+  return `
+    <div class="card shadow">
+      <h2>7. Lock & Share</h2>
+      <p class="muted">Freeze the pool, generate Verifier Pack & Offline Export, set verifier access.</p>
+      <div class="row">
+        <div class="col card">
+          <h3>Freeze & Snapshot</h3>
+          <button onclick="alert('Pool frozen with checksum snapshot')">Freeze Pool</button>
+          <div class="divider"></div>
+          <h3>Exports</h3>
+          <button class="ghost" onclick="alert('Verifier Pack ZIP generated')">Generate Verifier Pack</button>
+          <button class="ghost" onclick="alert('Offline Export Pack (PDF+XLS+ZIP) ready')">Offline Export Pack</button>
+        </div>
+        <div class="col card">
+          <h3>Verifier Access</h3>
+          <label>Mode</label>
+          <select>
+            <option>Full read</option>
+            <option>Restricted (docs only)</option>
+          </select>
+          <div class="divider"></div>
+          <button onclick="alert('Verifier invited with selected permissions')">Invite Verifier</button>
+        </div>
+      </div>
+      <div class="toolbar"><button class="ghost" onclick="go(5)">← Back</button><div class="right"><button class="primary" onclick="alert('All done!')">Finish</button></div></div>
+    </div>`;
+}
+
+function openTools(which){
+  const m = document.getElementById('screen');
+  if(which==='dash'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>Role Dashboards</h2>
+        <p class="muted">Shipowner / Charterer / Manager views with tailored KPIs.</p>
+        <div class="row">
+          <div class="col kpi"><div class="muted">Vessels</div><div class="big">68</div></div>
+          <div class="col kpi"><div class="muted">Surplus units</div><div class="big">740,000</div></div>
+          <div class="col kpi"><div class="muted">Deficit units</div><div class="big">385,000</div></div>
+          <div class="col kpi"><div class="muted">Projected cost</div><div class="big">€ 3,100,000</div></div>
+        </div>
+      </div>`;
+  } else if(which==='forecast'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>Forecasting & What-ifs</h2>
+        <p class="muted">Model operational or fuel changes and see FuelEU & settlement impact.</p>
+        <div class="row">
+          <div class="col"><label>Scenario</label><select><option>RFNBO 10%</option><option>OPS 80% TEN-T</option><option>Speed reduction 5%</option></select></div>
+          <div class="col kpi"><div class="muted">Δ intensity</div><div class="big">-2.6 gCO₂e/MJ</div></div>
+          <div class="col kpi"><div class="muted">Δ units</div><div class="big">-13,000</div></div>
+          <div class="col kpi"><div class="muted">€ impact</div><div class="big">€ 31,200</div></div>
+        </div>
+      </div>`;
+  } else if(which==='integrations'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>Integrations</h2>
+        <p class="muted">EU MRV (nightly), Voyage APIs (real-time), E-logbooks (real-time). Automated validation + manual override.</p>
+        <div class="row">
+          <div class="col card">
+            <h3>Connectors</h3>
+            <div class="row"><div class="col"><button>EU MRV</button></div><div class="col"><button>IMOS</button></div></div>
+            <div class="row"><div class="col"><button>Dataloy</button></div><div class="col"><button>E-logbooks</button></div></div>
+          </div>
+          <div class="col card">
+            <h3>Validation Log</h3>
+            <table><thead><tr><th>Source</th><th>Issue</th><th>Action</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>IMOS</td><td>Port code mismatch</td><td>Auto-corrected</td><td><span class="tag ok">OK</span></td></tr>
+              <tr><td>MRV</td><td>Missing noon report</td><td>Needs review</td><td><span class="tag warn">Review</span></td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </div>`;
+  } else if(which==='synergy'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>FuelEU ↔ ETS Synergy</h2>
+        <p class="muted">Compare EUA costs to FuelEU abatement & pooling options.</p>
+        <div class="row">
+          <div class="col kpi"><div class="muted">EUA price</div><div class="big">€ 75 / t</div></div>
+          <div class="col kpi"><div class="muted">FuelEU unit price</div><div class="big">€ 0.0024</div></div>
+          <div class="col kpi"><div class="muted">Hedge coverage</div><div class="big">62%</div></div>
+        </div>
+      </div>`;
+  } else if(which==='ledger'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>Banking / Borrowing Ledger</h2>
+        <p class="muted">Inter-year balances to support FuelEU banking and borrowing.</p>
+        <table class="matrix">
+          <thead><tr><th>Year</th><th>Banked</th><th>Borrowed</th><th>Net</th></tr></thead>
+          <tbody>
+            <tr><td>2025</td><td class="kbd">+120,000</td><td class="kbd">0</td><td class="kbd">+120,000</td></tr>
+            <tr><td>2026</td><td class="kbd">+40,000</td><td class="kbd">-20,000</td><td class="kbd">+20,000</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+  } else if(which==='settings'){
+    m.innerHTML = `
+      <div class="card shadow">
+        <h2>Platform Admin (pricing visibility & discounts)</h2>
+        <p class="muted">Configure hybrid fees globally and volume discounts. Coordinator-only fee visibility.</p>
+        <div class="row">
+          <div class="col"><label>Base per vessel (EUR)</label><input value="${state.pricing.basePerVesselEUR}" oninput="state.pricing.basePerVesselEUR=+this.value"></div>
+          <div class="col"><label>% of settlement</label><input value="${(state.pricing.percentOfSettlement*100).toFixed(2)}%"></div>
+        </div>
+        <div class="divider"></div>
+        <label><input type="checkbox" checked> Coordinator-only fee visibility</label>
+        <label><input type="checkbox" checked> Volume discounts enabled</label>
+      </div>`;
+  }
+  renderStepper();
+}
+
+function render(){
+  renderStepper();
+  const views = [viewCreate, viewInvite, viewAgreement, viewAttach, viewPreview, viewSettlement, viewLock];
+  document.getElementById('screen').innerHTML = views[state.step]();
+}
+render();
+</script>
+</body>
+</html>
