@@ -35,9 +35,9 @@
   .right{display:flex;gap:8px}
   button{appearance:none;border:1px solid var(--line);background:#0f1c2e;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer}
   button.primary{background:linear-gradient(180deg,var(--primary),var(--primary-2));border-color:var(--primary)}
-  button.ghost{background:#0f1c2e;border-color:var(--line);color:var(--muted)}
+  button.ghost{background:#0f1c2e;border-color:var(--line);color:#9cb3cc}
   .stepper{display:flex;gap:6px;flex-wrap:wrap}
-  .step{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);background:#0f1c2e}
+  .step{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:#9cb3cc;background:#0f1c2e}
   .step.active{border-color:var(--primary);color:#cfe2ff}
   table{border-collapse:collapse;width:100%}
   th,td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;font-size:13px}
@@ -47,17 +47,12 @@
   .tag.ok{border-color:#1f6e4a;color:#9be5c8;background:#0b261c}
   .tag.bad{border-color:#6b1d1d;color:#ffbdbd;background:#2a0d0d}
   .tag.warn{border-color:#5e4100;color:#ffd788;background:#2a1c00}
-  .note{font-size:12px;color:var(--muted)}
+  .note{font-size:12px;color:#9cb3cc}
   .divider{height:1px;background:var(--line);margin:14px 0}
   .matrix{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi .big{font-weight:800;font-size:22px}
-  .small{font-size:12px}
-  .muteb{color:#9cb3cc}
-  @media print{
-    body{background:#fff;color:#000}
-    .no-print{display:none}
-  }
+  @media print{ body{background:#fff;color:#000} .no-print{display:none} }
 </style>
 </head>
 <body>
@@ -66,7 +61,7 @@
     <div class="logo">LOGO</div>
     <div>
       <h1>Klaedes Advisory • FuelEU Pooling Platform</h1>
-      <div class="sub">Dark maritime demo • Settlement Statements (information-only) + Billing</div>
+      <div class="sub">Dark maritime demo • Pool Calculator + Statements (info-only) + Billing</div>
     </div>
   </div>
   <div style="margin-left:auto" class="stepper" id="stepper"></div>
@@ -122,8 +117,7 @@ const state = {
   pricing:{ basePerVesselEUR:250, percentOfSettlement:0.003, visibleToCoordinatorOnly:true },
   penaltyRatePerUnitEUR:0.0024,
   settlements:null,
-  calcSel:null,
-  invoices:[]
+  calcSel:null
 };
 
 /* ------------------------ HELPERS ------------------------ */
@@ -217,7 +211,7 @@ function computeSettlements(){
   const volume = transfers.reduce((a,t)=>a+t.eur,0);
   const base = state.pricing.basePerVesselEUR * selected.length;
   const pct = volume * state.pricing.percentOfSettlement;
-  state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct}, parties: Array.from(new Set(selected.map(v=>v.owner||v.name))) };
+  state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct} };
 }
 
 function viewPreview(){ computeSettlements(); const s=state.settlements; const pen = Math.abs(s.net)*state.penaltyRatePerUnitEUR; return `
@@ -543,26 +537,19 @@ function exportCSV(){
   const a=document.createElement('a'); a.href=url; a.download='pool_transfers.csv'; a.click(); URL.revokeObjectURL(url);
 }
 function exportJSON(){
-  const payload = {
-    pool: state.pool, fx: state.fx, transfers: state.settlements?.transfers||[]
-  };
+  const payload = { pool: state.pool, fx: state.fx, transfers: state.settlements?.transfers||[] };
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
   const a=document.createElement('a'); a.href=url; a.download='pool_transfers.json'; a.click(); URL.revokeObjectURL(url);
 }
 
-/* ------------ INFORMATION-ONLY PDF (printable HTML) ------------ */
-<script>
-/* ------------ INFORMATION-ONLY PDF (printable HTML) ------------ */
+/* ------------ INFORMATION-ONLY STATEMENT (printable) ------------ */
 function generateStatementPDF(partyName){
   if(!state.settlements){ computeSettlements(); }
   const s = state.settlements;
   const date = new Date().toISOString().slice(0,10);
   const title = partyName ? `Settlement Statement — ${partyName}` : 'Settlement Statement — Pool';
   const fx = `FX basis: ${state.fx.mode==='auto'?'ECB (auto)':'Manual (agreed)'} • EUR→USD ${state.fx.eurusd}`;
-  const transfers = s.transfers.filter(t=>{
-    if(!partyName) return true;
-    return t.from===partyName || t.to===partyName;
-  });
+  const transfers = s.transfers.filter(t=> !partyName || t.from===partyName || t.to===partyName );
 
   const totals = transfers.reduce((acc,t)=>{
     acc.out += partyName && t.from===partyName ? t.eur : 0;
@@ -626,7 +613,7 @@ function generateStatementPDF(partyName){
         <div><strong>Notes:</strong></div>
         <ul>
           <li>Amounts translate FuelEU surpluses/deficits into monetary terms based on the pool’s FX setting.</li>
-          <li>FX source & timing: ${fx}.</li>
+          <li>${fx}.</li>
           <li>In-kind entries show agreed non-cash consideration (with optional monetary equivalent recorded).</li>
         </ul>
       </div>
@@ -641,20 +628,14 @@ function generateStatementPDF(partyName){
   const w = window.open('', '_blank');
   w.document.write(html);
   w.document.close();
-
-  // Print after the new window is ready
   w.addEventListener('load', () => { w.focus(); w.print(); });
-
-  // Fallback in case 'load' already fired
   setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 600);
 }
-</script>
 
 /* -------------------- RENDER -------------------- */
 function render(){
   renderStepper();
   const views=[viewCreate,viewInvite,viewAgreement,viewAttach,viewPreview,viewSettlement,viewLock];
-  // ensure settlements present before step 5/6
   if(state.step>=4 && !state.settlements) computeSettlements();
   document.getElementById('screen').innerHTML = views[state.step]();
 }
