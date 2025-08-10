@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Klaedes Advisory — FuelEU Pooling (Dark Prototype)</title>
+<title>Klaedes Advisory — FuelEU Pooling (Demo)</title>
 <style>
   :root{
     --bg:#0b1420; --panel:#0f1c2e; --line:#1c2a3d;
     --text:#e6f1ff; --muted:#9cb3cc;
     --primary:#2f6df6; --primary-2:#1c3fa3; --accent:#00b8d9;
     --ok:#33d69f; --warn:#ffb020; --bad:#ff5c5c;
+    --row-green:#0b261c; --row-red:#2a0d0d;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
@@ -18,6 +19,8 @@
   .logo{width:40px;height:40px;border:2px dashed #254165;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7bb2e6;font-size:10px}
   h1{margin:0;font-size:16px;font-weight:800}
   .sub{color:var(--muted);font-size:12px}
+  .demo-bar{display:flex;gap:8px;margin-left:auto;align-items:center}
+  .demo-pill{font-size:12px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:#0b1a2a;color:#c8dbf5}
   .wrap{display:flex;min-height:100vh}
   nav{width:290px;border-right:1px solid var(--line);padding:16px;background:#0d1a2b;position:sticky;top:69px;height:calc(100vh - 69px);overflow:auto}
   .navtitle{font-size:12px;color:var(--muted);margin:8px}
@@ -47,12 +50,18 @@
   .tag.ok{border-color:#1f6e4a;color:#9be5c8;background:#0b261c}
   .tag.bad{border-color:#6b1d1d;color:#ffbdbd;background:#2a0d0d}
   .tag.warn{border-color:#5e4100;color:#ffd788;background:#2a1c00}
+  .row-green td{background:var(--row-green)}
+  .row-red td{background:var(--row-red)}
   .note{font-size:12px;color:#9cb3cc}
   .divider{height:1px;background:var(--line);margin:14px 0}
   .matrix{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0f1c2e}
   .kpi .big{font-weight:800;font-size:22px}
+  .flow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .flow .box{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0b1a2a}
+  .arrow{opacity:.6}
   @media print{ body{background:#fff;color:#000} .no-print{display:none} }
+  canvas{max-width:100%;background:#0b1a2a;border:1px solid var(--line);border-radius:12px;padding:8px}
 </style>
 </head>
 <body>
@@ -61,10 +70,15 @@
     <div class="logo">LOGO</div>
     <div>
       <h1>Klaedes Advisory • FuelEU Pooling Platform</h1>
-      <div class="sub">Dark maritime demo • Pool Calculator + Statements (info-only) + Billing</div>
+      <div class="sub">Demo — calculator + statements (info-only) + billing stubs</div>
     </div>
   </div>
-  <div style="margin-left:auto" class="stepper" id="stepper"></div>
+
+  <div class="demo-bar">
+    <span class="demo-pill">Demo mode</span>
+    <button class="ghost" onclick="loadSampleData()">Load Sample Data</button>
+    <button class="ghost" onclick="resetDemo()">Reset Demo</button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -122,9 +136,10 @@ const state = {
 
 /* ------------------------ HELPERS ------------------------ */
 function save(){ localStorage.setItem('vessels', JSON.stringify(state.vessels)); }
+function resetDemo(){ localStorage.removeItem('vessels'); state.vessels=[]; state.settlements=null; render(); alert('Demo reset.'); }
 function renderStepper(){
   const steps = ['Create Pool','Invite Members','Pool Agreement','Attach Vessels','Preview & Pricing','Settlement Matrix','Lock & Share'];
-  document.getElementById('stepper').innerHTML = steps.map((t,i)=>`<div class="step ${i===state.step?'active':''}">${i+1}. ${t}</div>`).join('');
+  document.getElementById('stepper')?.remove(); // older header had stepper
 }
 function go(i){ state.step=i; render(); }
 function nav(which){
@@ -139,7 +154,6 @@ function nav(which){
   else if(which==='synergy'){ el.innerHTML = `<div class="card"><h2>FuelEU ↔ ETS</h2><p class="muted">Compare EUA vs FuelEU abatement.</p></div>`; }
   else if(which==='ledger'){ el.innerHTML = `<div class="card"><h2>Banking/Borrowing</h2><p class="muted">Inter-year ledger.</p></div>`; }
   else if(which==='admin'){ el.innerHTML = viewAdmin(); }
-  renderStepper();
 }
 function recompute(v){
   const target = state.targets[v.year] ?? 0;
@@ -147,55 +161,110 @@ function recompute(v){
   v.balance = Math.round(delta * Number(v.energyMJ||0));
 }
 
+/* -------------------- SAMPLE DATA -------------------- */
+function loadSampleData(){
+  const demo = [
+    { imo:'9321483', name:'MV Aegean Star', type:'Container', year:2026, energyMJ:5200000000, achieved:82.4, currency:'EUR', mode:'Pool' },
+    { imo:'9745631', name:'MV Baltic Crest', type:'Bulk',      year:2026, energyMJ:4100000000, achieved:91.2, currency:'EUR', mode:'Pool' },
+    { imo:'9783329', name:'LNG Aurora',      type:'LNG',       year:2026, energyMJ:6800000000, achieved:85.5, currency:'EUR', mode:'Pool' },
+    { imo:'9312270', name:'EuroFerry One',   type:'Passenger', year:2026, energyMJ:3000000000, achieved:96.1, currency:'EUR', mode:'Standalone' },
+    { imo:'9637742', name:'MedBlue Atlas',   type:'Container', year:2026, energyMJ:5900000000, achieved:84.9, currency:'EUR', mode:'Pool' },
+    { imo:'9699912', name:'ArcticWave Nova', type:'Bulk',      year:2026, energyMJ:3600000000, achieved:88.7, currency:'EUR', mode:'Pool' }
+  ];
+  demo.forEach(v=>recompute(v));
+  state.vessels = demo;
+  save(); render();
+  alert('Loaded 6 sample vessels with mixed surplus/deficit.');
+}
+
 /* -------------------- 7-STEP FLOW VIEWS -------------------- */
-function viewCreate(){ const p=state.pool; return `
-  <div class="card"><h2>1. Create Pool</h2><p class="muted">Name, year, coordinator roles.</p>
-    <div class="row">
+function viewCreate(){
+  const p=state.pool;
+  const flow = `
+    <div class="flow">
+      <div class="box">1. Create Pool</div><span class="arrow">→</span>
+      <div class="box">2. Invite</div><span class="arrow">→</span>
+      <div class="box">3. Agreement</div><span class="arrow">→</span>
+      <div class="box">4. Attach Vessels</div><span class="arrow">→</span>
+      <div class="box">5. Preview</div><span class="arrow">→</span>
+      <div class="box">6. Settlement</div><span class="arrow">→</span>
+      <div class="box">7. Share</div>
+    </div>`;
+  return `<div class="card">
+    <h2>1. Create Pool</h2>
+    <p class="muted">Set the year and roles. Demo data is local to your browser.</p>
+    ${flow}
+    <div class="row" style="margin-top:12px">
       <div class="col">
         <label>Pool name</label><input value="${p.name}" oninput="state.pool.name=this.value">
-        <label>Year</label><select onchange="state.pool.year=+this.value"><option ${p.year===2025?'selected':''}>2025</option><option ${p.year===2026?'selected':''}>2026</option><option ${p.year===2027?'selected':''}>2027</option></select>
+        <label>Year</label><select onchange="state.pool.year=+this.value; state.settlements=null; render()">
+          <option ${p.year===2025?'selected':''}>2025</option>
+          <option ${p.year===2026?'selected':''}>2026</option>
+          <option ${p.year===2027?'selected':''}>2027</option>
+        </select>
         <label>Coordinator</label><input value="${p.coordinator}" oninput="state.pool.coordinator=this.value">
         <label><input type="checkbox" ${p.coCoordinator?'checked':''} onclick="state.pool.coCoordinator=this.checked"> Enable co-coordinator</label>
       </div>
-      <div class="col"><div class="kpi"><div class="muted">Mode</div><div class="big">Pooling & Solo</div></div><div class="kpi"><div class="muted">Banking/Borrowing</div><div class="big">Enabled</div></div></div>
+      <div class="col">
+        <div class="kpi"><div class="muted">Mode</div><div class="big">Pooling & Solo</div></div>
+        <div class="kpi"><div class="muted">Banking/Borrowing</div><div class="big">Enabled</div></div>
+      </div>
     </div>
-    <div class="toolbar"><span class="note">Autosaved.</span><div class="right"><button class="primary" onclick="go(1)">Continue →</button></div></div>
-  </div>`; }
-
+    <div class="toolbar"><span class="note">Tip: click “Load Sample Data” to see charts & statements.</span><div class="right"><button class="primary" onclick="go(1)">Continue →</button></div></div>
+  </div>`;
+}
 function viewInvite(){ const rows = state.invites.map(r=>`
   <div class="row" style="align-items:center;border-bottom:1px solid var(--line);padding:10px 0">
-    <div class="col"><strong>${r.org}</strong><div class="small">${r.role}</div></div>
+    <div class="col"><strong>${r.org}</strong><div class="note">${r.role}</div></div>
     <div style="display:flex;gap:8px;align-items:center"><span class="tag ${r.status==='Accepted'?'ok':(r.status==='Pending'?'warn':'')}">${r.status}</span><button class="ghost">Resend</button></div>
   </div>`).join('');
-  return `<div class="card"><h2>2. Invite Members</h2>
+  return `<div class="card">
+    <h2>2. Invite Members</h2>
     <div class="row">
       <div class="col card">
         <label>Org email / ID</label><input placeholder="compliance@company.com">
         <label>Role</label><select><option>Member</option><option>Co-Coordinator</option></select>
-        <div class="toolbar"><span class="note">Magic link invite.</span><div class="right"><button>Send Invite</button></div></div>
+        <div class="toolbar"><span class="note">Magic link invite (demo stub).</span><div class="right"><button>Send Invite</button></div></div>
       </div>
       <div class="col card">${rows}</div>
     </div>
     <div class="toolbar"><button class="ghost" onclick="go(0)">← Back</button><div class="right"><button class="primary" onclick="go(2)">Continue →</button></div></div>
-  </div>`; }
-
-function viewAgreement(){ return `
-  <div class="card"><h2>3. Pool Agreement</h2>
-    <p class="muted">BIMCO-inspired placeholders. Clause-level editing. E-sign stub.</p>
-    <div class="row"><div class="col"><label>Clause: Pricing Terms</label><textarea>[Placeholder] Price floor/ceiling; Payment terms; Late penalties.</textarea></div><div class="col"><label>E-sign</label><select><option>DocuSign</option><option>Adobe Sign</option></select><button style="margin-top:8px">Send for E-sign</button></div></div>
+  </div>`;
+}
+function viewAgreement(){
+  return `<div class="card">
+    <h2>3. Pool Agreement</h2>
+    <p class="muted">BIMCO-style placeholders. Clause-level editing. E-sign stub.</p>
+    <div class="row">
+      <div class="col"><label>Clause: Pricing Terms</label><textarea>[Placeholder] Price floor/ceiling; Payment terms; Late penalties.</textarea></div>
+      <div class="col"><label>E-sign</label><select><option>DocuSign</option><option>Adobe Sign</option></select><button style="margin-top:8px">Send for E-sign</button></div>
+    </div>
     <div class="toolbar"><button class="ghost" onclick="go(1)">← Back</button><div class="right"><button class="primary" onclick="go(3)">Continue →</button></div></div>
-  </div>`; }
-
-function viewAttach(){ const rows = state.vessels.filter(v=>v.year==state.pool.year).map(v=>`
-  <tr><td><input type="checkbox" ${v.mode==='Pool'?'checked':''} onclick="v.mode=this.checked?'Pool':'Standalone';save();render();"></td>
-      <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type}</td><td class="kbd">${v.achieved}</td><td class="kbd">${(state.targets[v.year]??0)}</td><td class="kbd">${(v.balance??0).toLocaleString()}</td><td><span class="tag ${v.balance>0?'ok':'bad'}">${v.balance>0?'Surplus':'Deficit'}</span></td></tr>`
-).join('') || `<tr><td colspan="8">No vessels for ${state.pool.year}. Go to “Vessels” to add/import.</td></tr>`;
-  return `<div class="card"><h2>4. Attach Vessels</h2>
+  </div>`;
+}
+function viewAttach(){
+  const rows = state.vessels
+    .filter(v=>v.year==state.pool.year)
+    .map(v=>{
+      const statusClass = v.balance>0 ? 'row-green' : (v.balance<0 ? 'row-red' : '');
+      return `<tr class="${statusClass}">
+        <td><input type="checkbox" ${v.mode==='Pool'?'checked':''} onclick="v.mode=this.checked?'Pool':'Standalone';save();render();"></td>
+        <td>${v.name}</td>
+        <td class="note">${v.imo}</td>
+        <td>${v.type}</td>
+        <td class="kbd">${v.achieved}</td>
+        <td class="kbd">${(state.targets[v.year]??0)}</td>
+        <td class="kbd">${(v.balance??0).toLocaleString()}</td>
+        <td><span class="tag ${v.balance>0?'ok':(v.balance<0?'bad':'warn')}">${v.balance>0?'Surplus':(v.balance<0?'Deficit':'Flat')}</span></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="8">No vessels for ${state.pool.year}. Go to “Vessels” to add/import or click “Load Sample Data”.</td></tr>`;
+  return `<div class="card">
+    <h2>4. Attach Vessels</h2>
     <p class="muted">Tick to include vessel in this pool. A vessel can’t be in two pools for the same year.</p>
     <div class="matrix"><table><thead><tr><th>In Pool</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Achieved</th><th>Target</th><th>Balance units</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="toolbar"><button class="ghost" onclick="go(2)">← Back</button><div class="right"><button class="primary" onclick="go(4)">Continue →</button></div></div>
-  </div>`; }
-
+  </div>`;
+}
 function computeSettlements(){
   const selected = state.vessels.filter(v=>v.year==state.pool.year && v.mode==='Pool');
   const net = selected.reduce((a,b)=>a + (b.balance||0), 0);
@@ -213,18 +282,34 @@ function computeSettlements(){
   const pct = volume * state.pricing.percentOfSettlement;
   state.settlements={ net, transfers, volume, fees:{base,pct,total:base+pct} };
 }
+function viewPreview(){
+  computeSettlements();
+  const s=state.settlements; const pen = Math.abs(s.net)*state.penaltyRatePerUnitEUR;
 
-function viewPreview(){ computeSettlements(); const s=state.settlements; const pen = Math.abs(s.net)*state.penaltyRatePerUnitEUR; return `
-  <div class="card"><h2>5. Preview & Pricing</h2>
+  // totals for chart
+  const year = state.pool.year;
+  const sel = state.vessels.filter(v=>v.year==year && v.mode==='Pool');
+  const surplus = sel.reduce((a,v)=>a + Math.max(0,v.balance||0),0);
+  const deficit = sel.reduce((a,v)=>a + Math.max(0,-(v.balance||0)),0);
+  const coverage = deficit? surplus/deficit : 0;
+
+  setTimeout(()=>{ drawBar('sdChart', surplus, deficit); drawGauge('covChart', coverage); }, 0);
+
+  return `<div class="card">
+    <h2>5. Preview & Pricing</h2>
     <div class="row">
       <div class="col kpi"><div class="muted">Net units</div><div class="big">${s.net.toLocaleString()}</div></div>
       <div class="col kpi"><div class="muted">€ at penalty rate</div><div class="big">€ ${pen.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
       <div class="col kpi"><div class="muted">Settlement volume</div><div class="big">€ ${s.volume.toLocaleString()}</div></div>
       <div class="col kpi"><div class="muted">Platform fee (hybrid)</div><div class="big">€ ${s.fees.total.toLocaleString()}</div></div>
     </div>
+    <div class="row" style="margin-top:12px">
+      <div class="col card"><h3>Surplus vs Deficit</h3><canvas id="sdChart" width="480" height="220" aria-label="Surplus vs Deficit"></canvas></div>
+      <div class="col card"><h3>Coverage Gauge</h3><canvas id="covChart" width="480" height="220" aria-label="Coverage"></canvas></div>
+    </div>
     <div class="toolbar"><button class="ghost" onclick="go(3)">← Back</button><div class="right"><button class="primary" onclick="go(5)">Continue →</button></div></div>
-  </div>`; }
-
+  </div>`;
+}
 function viewSettlement(){
   const selParties = Array.from(new Set(state.vessels.filter(v=>v.year==state.pool.year && v.mode==='Pool').map(v=>v.owner||v.name)));
   const rows = (state.settlements?.transfers||[]).map(t=>`
@@ -257,16 +342,14 @@ function viewSettlement(){
       <div class="col card">
         <h3>Settlement Statements (information-only)</h3>
         <div class="row">
-          <div class="col">
-            <button class="primary" onclick="generateStatementPDF()">Generate Pool Settlement Statement (PDF)</button>
-          </div>
+          <div class="col"><button class="primary" onclick="generateStatementPDF()">Generate Pool Settlement Statement (PDF)</button></div>
           <div class="col">
             <label>Per-party</label>
             <select id="partySel">${selParties.map(p=>`<option>${p}</option>`).join('')}</select>
             <button onclick="generateStatementPDF(document.getElementById('partySel').value)">Generate Statement for Party</button>
           </div>
         </div>
-        <p class="small muted">Statements translate surpluses/deficits into monetary terms (per FX), include in-kind notes, and show a “not an invoice” disclaimer.</p>
+        <p class="small muted">Statements translate surpluses/deficits into monetary terms (per FX) and show a “not an invoice” disclaimer.</p>
       </div>
       <div class="col card">
         <h3>Exports</h3>
@@ -278,10 +361,9 @@ function viewSettlement(){
     <div class="toolbar"><button class="ghost" onclick="go(4)">← Back</button><div class="right"><button class="primary" onclick="go(6)">Continue →</button></div></div>
   </div>`;
 }
-
 function viewLock(){ return `
   <div class="card"><h2>7. Lock & Share</h2>
-    <p class="muted">Freeze, export verifier pack and offline export (stub).</p>
+    <p class="muted">Freeze, export verifier pack and offline export (stubs).</p>
     <div class="row">
       <div class="col card"><h3>Freeze & Snapshot</h3><button>Freeze Pool</button></div>
       <div class="col card"><h3>Exports</h3><button class="ghost">Verifier Pack</button> <button class="ghost">Offline Export</button></div>
@@ -326,18 +408,27 @@ function importCSV(file){
   reader.readAsText(file);
 }
 function viewVessels(){
-  const rows = state.vessels.map((v,i)=>`
-    <tr>
-      <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type}</td><td>${v.year}</td>
-      <td class="kbd">${v.achieved}</td><td class="kbd">${state.targets[v.year]??0}</td>
-      <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
-      <td class="kbd">${(v.balance??0).toLocaleString()}</td>
-      <td><select onchange="state.vessels[${i}].mode=this.value; save(); render()"><option ${v.mode==='Pool'?'selected':''}>Pool</option><option ${v.mode==='Standalone'?'selected':''}>Standalone</option></select></td>
-      <td><button class="ghost" onclick="state.vessels.splice(${i},1); save(); render()">Remove</button></td>
-    </tr>`).join('') || `<tr><td colspan="10">No vessels yet. Add one below or import CSV.</td></tr>`;
+  const rows = state.vessels.map((v,i)=>{
+    const rowClass = v.balance>0 ? 'row-green' : (v.balance<0 ? 'row-red' : '');
+    return `
+      <tr class="${rowClass}">
+        <td>${v.name}</td><td class="note">${v.imo}</td><td>${v.type}</td><td>${v.year}</td>
+        <td class="kbd">${v.achieved}</td><td class="kbd">${state.targets[v.year]??0}</td>
+        <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
+        <td class="kbd">${(v.balance??0).toLocaleString()}</td>
+        <td>
+          <select onchange="state.vessels[${i}].mode=this.value; save(); render()">
+            <option ${v.mode==='Pool'?'selected':''}>Pool</option>
+            <option ${v.mode==='Standalone'?'selected':''}>Standalone</option>
+          </select>
+        </td>
+        <td><button class="ghost" onclick="state.vessels.splice(${i},1); save(); render()">Remove</button></td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="10">No vessels yet. Click “Load Sample Data” or add/import below.</td></tr>`;
   const yrOpts = [2025,2026,2027].map(y=>`<option>${y}</option>`).join('');
-  return `<div class="card"><h2>Vessels (add/import & compute)</h2>
-    <p class="muted">Paste verifier values; we compute balances from Achieved–Target × Energy (MJ).</p>
+  return `<div class="card">
+    <h2>Vessels (add/import & compute)</h2>
+    <p class="muted">Green = surplus; Red = deficit. We compute balance = (Achieved − Target) × Energy (MJ).</p>
     <div class="row">
       <div class="col card">
         <h3>Add vessel</h3>
@@ -368,7 +459,8 @@ function viewVessels(){
 
 /* -------------------- ACCOUNT / ADMIN / BILLING -------------------- */
 function viewAccount(){ return `
-  <div class="card"><h2>Account & Organization</h2>
+  <div class="card">
+    <h2>Account & Organization</h2>
     <div class="row">
       <div class="col card">
         <h3>Create account (demo)</h3>
@@ -382,25 +474,26 @@ function viewAccount(){ return `
         <label>Invite user</label><input placeholder="user@company.com"><button style="margin-top:8px">Send invite</button>
       </div>
     </div>
-  </div>`; }
-
+  </div>`;
+}
 function viewAdmin(){ return `
   <div class="card"><h2>Platform Admin</h2>
     <label>Base fee per vessel (EUR)</label><input value="${state.pricing.basePerVesselEUR}" oninput="state.pricing.basePerVesselEUR=+this.value;render()">
     <label>% of settlement</label><input value="${(state.pricing.percentOfSettlement*100).toFixed(2)}%" oninput="state.pricing.percentOfSettlement=parseFloat(this.value)/100;render()">
     <label><input type="checkbox" ${state.pricing.visibleToCoordinatorOnly?'checked':''} onclick="state.pricing.visibleToCoordinatorOnly=this.checked"> Coordinator-only fee visibility</label>
-  </div>`; }
-
+  </div>`;
+}
 function viewBilling(){
   const s = state.settlements || { fees:{base:0,pct:0,total:0} };
   const rows = `
     <tr><td>2026-08-01</td><td>Platform fee (base)</td><td class="kbd">€ ${s.fees.base.toLocaleString()}</td><td><button class="ghost" onclick="alert('Stripe Checkout (stub)')">Pay</button></td></tr>
     <tr><td>2026-08-01</td><td>Platform fee (% of settlement)</td><td class="kbd">€ ${s.fees.pct.toLocaleString()}</td><td><button class="ghost" onclick="alert('Stripe Checkout (stub)')">Pay</button></td></tr>
   `;
-  return `<div class="card"><h2>Billing (platform fees)</h2>
+  return `<div class="card">
+    <h2>Billing (platform fees)</h2>
     <p class="muted">Coordinators pay platform fees here. Member-to-member settlement is off-platform; use the information statements from Step 6.</p>
     <div class="matrix"><table><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="toolbar"><span class="note">Stripe integration in MVP: invoices + SEPA/card, VAT via Stripe Tax.</span><div class="right"><button class="primary" onclick="alert('Open Stripe Customer Portal (stub)')">Open Customer Portal</button></div></div>
+    <div class="toolbar"><span class="note">Stripe in MVP: invoices + SEPA/card, VAT via Stripe Tax.</span><div class="right"><button class="primary" onclick="alert('Open Stripe Customer Portal (stub)')">Open Customer Portal</button></div></div>
   </div>`;
 }
 
@@ -469,22 +562,22 @@ function viewCalc(){
   const ef = poolEfficiency(sel);
   const sugg = calculatorSuggestions(sel, all);
 
-  const rows = all.map(v=>`
-    <tr>
+  const rows = all.map(v=>{
+    const rc = v.balance>0?'row-green':(v.balance<0?'row-red':'');
+    return `
+    <tr class="${rc}">
       <td><input type="checkbox" ${state.calcSel.has(v.imo)?'checked':''} onclick="this.checked?state.calcSel.add('${v.imo}'):state.calcSel.delete('${v.imo}'); render()"></td>
-      <td>${v.name}</td><td class="small">${v.imo}</td><td>${v.type||''}</td>
+      <td>${v.name}</td><td class="note">${v.imo}</td><td>${v.type||''}</td>
       <td class="kbd">${v.achieved??''}</td><td class="kbd">${state.targets?.[v.year]??''}</td>
       <td class="kbd">${(v.energyMJ??0).toLocaleString()}</td>
       <td class="kbd">${(v.balance??0).toLocaleString()}</td>
       <td><span class="tag ${v.balance>0?'ok':(v.balance<0?'bad':'warn')}">${v.balance>0?'Surplus':(v.balance<0?'Deficit':'Flat')}</span></td>
-    </tr>`).join('') || `<tr><td colspan="9">No vessels for ${year}. Add/import in “Vessels”.</td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="9">No vessels for ${year}. Add/import in “Vessels”.</td></tr>`;
 
   const cov = isFinite(ef.coverage) ? (ef.coverage*100).toFixed(0)+'%' : '—';
   const scv = isFinite(ef.stressCoverage) ? (ef.stressCoverage*100).toFixed(0)+'%' : '—';
   const badge = `tag ${ef.level}`;
-
-  const addList = (sugg.add||[]).map(v=>`<li>${v.name} (+${v.balance.toLocaleString()}u)</li>`).join('') || '<li>No obvious additions</li>';
-  const focus = sugg.focus ? `${sugg.focus.name} (${sugg.focus.balance.toLocaleString()}u deficit)` : 'None';
 
   return `
   <div class="card"><h2>Pool Efficiency Calculator</h2>
@@ -513,17 +606,6 @@ function viewCalc(){
         <thead><tr><th>Use</th><th>Vessel</th><th>IMO</th><th>Type</th><th>Achieved</th><th>Target</th><th>Energy (MJ)</th><th>Balance</th><th>Status</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-    </div>
-
-    <div class="row">
-      <div class="col card"><h3>Suggestions</h3>
-        <p class="small muted">Add these top surplus vessels to improve coverage:</p>
-        <ul>${addList}</ul>
-        <p class="small muted">Largest deficit to focus efficiency measures on: <strong>${focus}</strong></p>
-      </div>
-      <div class="col card"><h3>Tip (what-if)</h3>
-        <p class="small muted">Every −1.0 gCO₂e/MJ on the largest deficit vessel improves balance by ~<code>1.0 × EnergyMJ</code> units.</p>
-      </div>
     </div>
   </div>`;
 }
@@ -632,9 +714,44 @@ function generateStatementPDF(partyName){
   setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 600);
 }
 
+/* -------------------- MINI-CHARTS -------------------- */
+function drawBar(id, surplus, deficit){
+  const c=document.getElementById(id); if(!c) return; const ctx=c.getContext('2d'); const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const max=Math.max(surplus,deficit,1);
+  const bw=120, gap=80, baseY=H-30, scale=(H-80)/max;
+  // axes
+  ctx.strokeStyle='#2b3b55'; ctx.beginPath(); ctx.moveTo(40,baseY); ctx.lineTo(W-20,baseY); ctx.stroke();
+  // bars
+  ctx.fillStyle='#33d69f'; ctx.fillRect(80, baseY - surplus*scale, bw, surplus*scale);
+  ctx.fillStyle='#ff5c5c'; ctx.fillRect(80+bw+gap, baseY - deficit*scale, bw, deficit*scale);
+  // labels
+  ctx.fillStyle='#cfe2ff'; ctx.font='12px system-ui';
+  ctx.fillText('Surplus', 80, baseY+16);
+  ctx.fillText('Deficit', 80+bw+gap, baseY+16);
+  ctx.textAlign='center';
+  ctx.fillText(surplus.toLocaleString(), 80+bw/2, baseY - surplus*scale - 8);
+  ctx.fillText(deficit.toLocaleString(), 80+bw+gap+bw/2, baseY - deficit*scale - 8);
+}
+function drawGauge(id, coverage){
+  const c=document.getElementById(id); if(!c) return; const ctx=c.getContext('2d'); const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H-20, r=Math.min(W,H)-60;
+  // arc background
+  ctx.lineWidth=16; ctx.strokeStyle='#2b3b55'; ctx.beginPath(); ctx.arc(cx,cy, r/2, Math.PI, 2*Math.PI); ctx.stroke();
+  // arc value
+  const val=Math.max(0, Math.min(coverage, 1.4)); // cap at 140%
+  const end=Math.PI + (Math.PI*val/1.4);
+  ctx.strokeStyle= coverage>=1 ? '#33d69f' : (coverage>=0.8 ? '#ffb020' : '#ff5c5c');
+  ctx.beginPath(); ctx.arc(cx,cy, r/2, Math.PI, end); ctx.stroke();
+  // text
+  ctx.fillStyle='#cfe2ff'; ctx.font='20px system-ui'; ctx.textAlign='center';
+  const pct = isFinite(coverage) ? Math.round(coverage*100)+'%' : '—';
+  ctx.fillText(pct, cx, cy-8);
+}
+
 /* -------------------- RENDER -------------------- */
 function render(){
-  renderStepper();
   const views=[viewCreate,viewInvite,viewAgreement,viewAttach,viewPreview,viewSettlement,viewLock];
   if(state.step>=4 && !state.settlements) computeSettlements();
   document.getElementById('screen').innerHTML = views[state.step]();
